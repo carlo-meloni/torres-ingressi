@@ -1,23 +1,29 @@
 /**
  * Tipi del flusso di prenotazione pubblico.
  *
- * Per ora i dati sono mockati (vedi `lib/mock-data.ts`); queste interfacce
- * rispecchiano il modello dati Prisma (`BookingSlot`, `Booking`) così che il
- * passaggio ai dati reali richieda modifiche minime.
+ * Il calendario è costruito dai dati reali (`lib/booking-calendar.ts`) a partire
+ * da `BookingSlot`/`Booking`: queste interfacce ne sono la forma serializzabile
+ * passata ai client component.
  */
 
 /** Stato di apertura di uno slot nel calendario pubblico. */
 export type SlotStatus = "aperto" | "quasi_pieno" | "pieno" | "chiuso";
 
-/** Singolo turno prenotabile mostrato nel calendario. */
+/**
+ * Singolo turno prenotabile mostrato nel calendario.
+ *
+ * Rappresenta una **fascia oraria**, non un singolo sportello: se più sportelli
+ * sono aperti alla stessa ora, i loro slot sono uniti in un'unica fascia e i
+ * posti sono sommati. Lo sportello effettivo viene assegnato in fase di
+ * prenotazione (lo si vede nella conferma).
+ */
 export interface CalendarSlot {
+  /** Identificatore della fascia: istante di inizio in ISO (non un singolo sportello). */
   id: string;
   /** Orario di inizio in formato "HH:mm" (es. "10:00"). */
   time: string;
   status: SlotStatus;
-  /** Nome dello sportello che serve questo slot (es. "Sportello 1"). */
-  counterName: string;
-  /** Posti ancora prenotabili in questo slot. */
+  /** Posti ancora prenotabili in questa fascia (somma su tutti gli sportelli). */
   seatsLeft: number;
 }
 
@@ -41,6 +47,50 @@ export interface BookingFormData {
   name: string;
   email: string;
   phone: string;
+}
+
+/* ── Gestione prenotazioni (admin) ────────────────────────────────────── */
+
+/**
+ * Stato di una prenotazione. Unione di letterali allineata all'enum Prisma
+ * `BookingStatus`: i client component ricevono solo primitivi, quindi non
+ * importiamo l'enum generato di Prisma oltre il confine server→client.
+ */
+export type BookingStatusValue =
+  | "PRENOTATA"
+  | "IN_CODA"
+  | "CHIAMATA"
+  | "SERVITA"
+  | "SALTATA";
+
+/**
+ * Prenotazione nella tabella admin (sola lettura).
+ *
+ * Le date attraversano il confine server→client come ISO string, come per
+ * `OpeningWindowListItem`.
+ */
+export interface BookingListItem {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  /** Numero progressivo del turno. */
+  ticketNumber: number;
+  status: BookingStatusValue;
+  /** Momento della prenotazione (ISO string). */
+  createdAt: string;
+  /** Inizio dello slot prenotato (ISO string). */
+  slotStart: string;
+  /** Fine dello slot prenotato (ISO string). */
+  slotEnd: string;
+  counterId: string;
+  counterName: string;
+}
+
+/** Sportello selezionabile nel filtro della tabella prenotazioni. */
+export interface BookingCounterOption {
+  id: string;
+  name: string;
 }
 
 /* ── Coda / schermo pubblico ──────────────────────────────────────────── */

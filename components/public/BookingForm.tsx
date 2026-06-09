@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CalendarDay, CalendarSlot } from "@/types/booking";
+import { createBooking } from "@/actions/bookings";
 
 interface BookingFormProps {
   day: CalendarDay;
@@ -17,16 +18,18 @@ interface FieldErrors {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Form di prenotazione per lo slot selezionato. Con i dati mockati genera un
- * numero di turno fittizio e reindirizza alla pagina di conferma; la
- * creazione reale passerà da una Server Action.
+ * Form di prenotazione per lo slot selezionato. Valida lato client per un
+ * feedback immediato, poi delega la creazione (e l'assegnazione del numero di
+ * turno) alla Server Action `createBooking`; al successo reindirizza alla
+ * pagina di conferma con i dati reali della prenotazione.
  */
 export default function BookingForm({ day, slot }: BookingFormProps) {
   const router = useRouter();
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") ?? "").trim();
@@ -38,22 +41,30 @@ export default function BookingForm({ day, slot }: BookingFormProps) {
     if (email && !EMAIL_RE.test(email))
       nextErrors.email = "Inserisci un'email valida.";
 
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setFormError(null);
+    setSubmitting(true);
+
+    const result = await createBooking({
+      slotStart: slot.id,
+      name,
+      email,
+      phone,
+    });
+    if (!result.success) {
+      setFormError(result.error);
+      setSubmitting(false);
       return;
     }
 
-    setSubmitting(true);
-
-    // Mock: numero di turno fittizio finché non c'è la persistenza reale.
-    const ticketNumber = Math.floor(Math.random() * 80) + 20;
-
     const params = new URLSearchParams({
-      ticket: String(ticketNumber),
+      ticket: String(result.data.ticketNumber),
       name,
-      date: day.date,
-      time: slot.time,
-      counter: slot.counterName,
+      date: result.data.date,
+      time: result.data.time,
+      counter: result.data.counterName,
     });
     if (email) params.set("email", email);
     if (phone) params.set("phone", phone);
@@ -73,8 +84,8 @@ export default function BookingForm({ day, slot }: BookingFormProps) {
           <span className="font-semibold">
             {day.weekday} {day.dayNumber} {day.month}
           </span>{" "}
-          alle <span className="font-semibold tabular-nums">{slot.time}</span> —{" "}
-          {slot.counterName}
+          alle <span className="font-semibold tabular-nums">{slot.time}</span>.
+          Lo sportello ti verrà assegnato e indicato nella conferma.
         </p>
       </div>
 
@@ -107,6 +118,15 @@ export default function BookingForm({ day, slot }: BookingFormProps) {
           className="w-full rounded-xl border border-brand-surface-muted bg-white px-4 py-2.5 text-sm text-foreground outline-none transition-all duration-200 ease-out-soft placeholder:text-brand-muted/50 hover:border-brand-primary/30 focus:border-brand-accent focus:ring-4 focus:ring-brand-accent/10"
         />
       </Field>
+
+      {formError && (
+        <p
+          role="alert"
+          className="rounded-xl border border-status-full/20 bg-status-full/5 px-4 py-3 text-sm font-medium text-status-full"
+        >
+          {formError}
+        </p>
+      )}
 
       <button
         type="submit"
