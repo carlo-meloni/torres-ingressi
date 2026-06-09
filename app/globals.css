@@ -17,6 +17,8 @@
   /* Accento: rosso Torres */
   --color-brand-accent: #b93114;
   --color-brand-accent-hover: #9c2810;
+  /* Oro/bronzo dello stemma — hairline e accenti caldi su superfici scure */
+  --color-brand-gold: #c8a96a;
   /* Superfici neutre */
   --color-brand-surface: #f4f5f8;
   --color-brand-surface-muted: #e6e8ef;
@@ -36,6 +38,12 @@
   /* ── Easing & animazioni ────────────────────────────────────────── */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-fade-up: fade-up 0.7s var(--ease-out-soft) both;
+  /* Schermo pubblico: ingresso del numero chiamato */
+  --animate-call-pop: call-pop 0.6s var(--ease-out-soft) both;
+  /* Schermo pubblico: cambio del numero servito a uno sportello */
+  --animate-tick-in: tick-in 0.45s var(--ease-out-soft) both;
+  /* Schermo pubblico: respiro lento dei bagliori di sfondo */
+  --animate-ambient: ambient 9s ease-in-out infinite;
 }
 
 @keyframes fade-up {
@@ -46,6 +54,43 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes call-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  60% {
+    transform: translateY(0) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tick-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ambient {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1.08);
   }
 }
 

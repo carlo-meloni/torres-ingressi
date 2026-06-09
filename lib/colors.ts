@@ -16,6 +16,8 @@ export const COLORS = {
   accent: "#b93114",
   /** Rosso più scuro — hover dell'accento */
   accentHover: "#9c2810",
+  /** Oro/bronzo dello stemma — hairline e accenti caldi su superfici scure */
+  gold: "#c8a96a",
   /** Grigio chiarissimo — superfici / sfondo */
   surface: "#f4f5f8",
   /** Grigio chiaro — superfici secondarie / bordi */

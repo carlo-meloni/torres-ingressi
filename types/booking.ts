@@ -42,3 +42,32 @@ export interface BookingFormData {
   email: string;
   phone: string;
 }
+
+/* ── Coda / schermo pubblico ──────────────────────────────────────────── */
+
+/** Uno sportello attivo mostrato sullo schermo pubblico della coda. */
+export interface DisplayCounter {
+  id: string;
+  /** Nome visibile (es. "Sportello 3"). */
+  name: string;
+}
+
+/**
+ * Istantanea della coda mostrata sullo schermo pubblico.
+ *
+ * Per ora i numeri sono interi mockati e l'avanzamento è simulato lato client
+ * (vedi `lib/mock-queue.ts` e `QueueDisplay`). Con i dati reali questa
+ * istantanea arriverà dal backend e gli avanzamenti via WebSocket/Pusher.
+ */
+export interface QueueSnapshot {
+  /** Sportelli aperti, in ordine di visualizzazione. */
+  counters: DisplayCounter[];
+  /** Numero servito ora a ciascuno sportello (per id); `null` se libero. */
+  serving: Record<string, number | null>;
+  /** Sportello dell'ultima chiamata: è l'hero dello schermo. */
+  latestCounterId: string;
+  /** Prossimi numeri in coda, in ordine di chiamata. */
+  upcoming: number[];
+  /** Primo numero ancora non assegnato (alimenta la coda nella simulazione). */
+  nextFree: number;
+}
