@@ -8,6 +8,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Colori principali del brand — vedi lib/colors.ts */
+  --color-brand-primary: #16264f;
+  --color-brand-accent: #b93114;
+  --color-brand-surface: #edeef2;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
