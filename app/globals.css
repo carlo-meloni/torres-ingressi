@@ -23,6 +23,12 @@
   /* Testo secondario su sfondo chiaro (contrasto AA) */
   --color-brand-muted: #5b6478;
 
+  /* ── Stato slot calendario (vedi lib/colors.ts) ─────────────────── */
+  --color-status-open: #10b981;
+  --color-status-almost: #f59e0b;
+  --color-status-full: #ef4444;
+  --color-status-closed: #6b7280;
+
   /* ── Tipografia ─────────────────────────────────────────────────── */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

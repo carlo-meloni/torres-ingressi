@@ -25,3 +25,20 @@ export const COLORS = {
 } as const;
 
 export type ColorKey = keyof typeof COLORS;
+
+/**
+ * Colori che comunicano lo stato di apertura di uno slot nel calendario
+ * pubblico. Classi Tailwind corrispondenti: `bg-status-open`, ecc.
+ */
+export const STATUS_COLORS = {
+  /** Verde — sportello aperto, slot prenotabile */
+  open: "#10b981",
+  /** Ambra — pochi posti rimasti */
+  almost: "#f59e0b",
+  /** Rosso — slot al completo, non prenotabile */
+  full: "#ef4444",
+  /** Grigio — biglietteria chiusa in quella fascia */
+  closed: "#6b7280",
+} as const;
+
+export type StatusColorKey = keyof typeof STATUS_COLORS;
