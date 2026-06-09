@@ -1,96 +1,126 @@
-# Current Feature: Aperture (finestre + slot) — `/admin/aperture`
+# Current Feature: Prenotazioni (elenco admin) — `/admin/prenotazioni`
 
 ## Goal
 
-Replace the placeholder at `app/(admin)/admin/aperture/page.tsx` with a working
-manager for the `OpeningWindow` model: un admin **apre** uno sportello definendo
-una finestra oraria (inizio, fine, durata slot, capacità) — il sistema **genera
-gli slot prenotabili** (`BookingSlot`) — e può **chiudere** (eliminare) una
-finestra. Coerente con "Apri/chiudi finestre" della spec.
+Replace the placeholder at `app/(admin)/admin/prenotazioni/page.tsx` with l'elenco
+completo delle prenotazioni dei tifosi, in **sola lettura**, con filtri per data,
+sportello e stato. Coerente con la spec ("Elenco completo delle prenotazioni per
+data/sportello" della Dashboard Admin) e con la separazione dei ruoli: ADMIN
+**vede** le prenotazioni; la gestione di coda e i cambi di stato restano nella
+vista bigliettaio `(cassa)`.
 
 ## Scope
 
-- `lib/slots.ts` — logica **pura** di generazione slot da una finestra
-  (`generateSlotRanges`): dato `windowStart`/`windowEnd`/`slotDurationMinutes`,
-  ritorna gli intervalli `{ startTime, endTime }` allineati alla durata.
-  Isolata e testabile (nessuna dipendenza da Prisma/Next).
-- `types/opening-window.ts` — `OpeningWindowListItem` (forma serializzabile per
-  il client: date come ISO string), `OpeningWindowInput`, `CounterOption`.
-- `actions/opening-windows.ts` — Server Actions (`"use server"`):
-  - `createOpeningWindow` — guardia RBAC (`ADMIN`/`SYSADMIN`), Zod
-    (start < end, durata 1–240 min, capacità 1–100, sportello attivo esistente,
-    nessuna sovrapposizione con altre finestre dello stesso sportello),
-    genera la finestra **e** i suoi slot in **una transazione**
-    (`prisma.$transaction`), ritorna `ActionResult`, `revalidatePath`.
-  - `deleteOpeningWindow` — chiude/elimina una finestra; **rifiuta** se ha
-    prenotazioni associate (il cascade travolgerebbe slot → prenotazioni).
-- `app/(admin)/admin/aperture/page.tsx` — server component. Carica le finestre
-  (con nome sportello, `_count.slots`, conteggio prenotazioni) e gli sportelli
-  **attivi** per la select del form; mappa a forma serializzabile; rende
-  `<OpeningWindowManager>`.
-- `components/admin/OpeningWindowManager.tsx` — client component (pattern
-  `CounterManager`): stato locale, form di apertura con select sportello +
-  `datetime-local` + durata/capacità, riga finestra con conteggio slot/
-  prenotazioni, conferma inline di chiusura, toast effimeri.
-
-### Form stack: react-hook-form + zod + shadcn/ui
-
-- **shadcn/ui inizializzato manualmente** (non via CLI, per non riscrivere il
-  tema Tailwind v4 brand): `components.json`, `lib/utils.ts` (`cn`), token
-  semantici shadcn in `app/globals.css` **mappati sulla brand palette**
-  (`--primary`=navy, `--ring`=accento, `--destructive`=status-full, ecc.), e le
-  primitive `components/ui/{button,input,label,select,form}.tsx`.
-- **`Button`** ha una variante extra `brand` (gradiente accento Torres) per
-  mantenere lo stile dei CTA esistenti.
-- **Schema condiviso** `lib/schemas/opening-window.ts`
-  (`openingWindowFormSchema`): importato sia dal form (`zodResolver`) sia dalla
-  Server Action → validazione e messaggi identici sui due lati. Gli orari sono
-  stringhe `datetime-local`; la Server Action le converte in `Date`.
-- `useWatch` (non `form.watch`) per l'anteprima slot → compatibile col React
-  Compiler.
-- **Date/ora: picker shadcn, non input nativo.** `components/ui/date-time-picker.tsx`
-  (Popover + `Calendar` su react-day-picker v10 + input orario) sostituisce
-  `<input type="datetime-local">`, il cui formato a schermo seguiva il locale del
-  browser (es. `mm/dd/yyyy`). Il valore resta la stringa "YYYY-MM-DDTHH:mm" (schema
-  invariato), ma la visualizzazione è **sempre `dd/mm/yyyy`** via `lib/format.ts`.
-  Calendario in locale italiano, settimana da lunedì.
-- **Formato date centralizzato** in `lib/format.ts` (`formatDate` → dd/mm/yyyy,
-  `formatTime` → HH:mm), usato dal picker e dalla riga finestra.
-- Dipendenze aggiunte: `react-hook-form`, `@hookform/resolvers`,
-  `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`,
-  `@radix-ui/react-{slot,label,select,popover}`, `react-day-picker`, `date-fns`;
-  `zod` pinnato come dep diretta.
-- **Sportelli (`CounterManager`) non migrato:** resta sul form "plain"; migrabile
-  a questo stack in un passo successivo.
+- `types/booking.ts` — aggiunti `BookingStatusValue` (unione di letterali
+  allineata all'enum Prisma `BookingStatus`, per non importare l'enum generato
+  oltre il confine server→client), `BookingListItem` (forma serializzabile: date
+  come ISO string, sportello denormalizzato) e `BookingCounterOption` (filtro).
+- `lib/booking-status.ts` — `BOOKING_STATUS_META` (etichetta + classi badge
+  mappate sui token brand/status, **letterali** per Tailwind v4) e
+  `BOOKING_STATUS_ORDER` (ordine del filtro = ciclo di vita).
+- `app/(admin)/admin/prenotazioni/page.tsx` — server component. Carica le
+  prenotazioni con orario slot e sportello (`slot.openingWindow.counter`),
+  ordinate per orario slot poi `ticketNumber`; mappa a `BookingListItem`; deriva
+  gli sportelli presenti (dedup) per il filtro; rende `<BookingsTable>`.
+- `components/admin/BookingsTable.tsx` — client component. Tabella ordinata per
+  orario con badge di stato; **filtro lato client** (`useMemo`) per data /
+  sportello / stato via `Select` shadcn; stati vuoti distinti per "nessuna
+  prenotazione" e "nessun risultato dai filtri".
 
 ## Notes / decisions
 
-- **Solo apri/chiudi, niente modifica:** la spec dice "Apri/chiudi finestre".
-  Modificare gli orari dopo la generazione degli slot (eventualmente già
-  prenotati) è complesso e fuori scope → solo create + delete.
-- **Generazione slot in transazione:** finestra e slot nascono insieme; se la
-  generazione fallisce, niente finestra orfana.
-- **Guardia sovrapposizione:** due finestre sovrapposte sullo stesso sportello
-  genererebbero slot duplicati/ambigui → bloccate in fase di creazione.
-- **Delete guard:** `deleteOpeningWindow` rifiuta se esistono prenotazioni sugli
-  slot della finestra (coerente col delete guard di `deleteCounter`).
-- **Date al confine server→client:** passate come ISO string (i client component
-  ricevono solo primitivi, come `CounterListItem`).
-- **Niente vitest configurato** nel progetto → la logica di `lib/slots.ts` è
-  pura/testabile, ma il gate resta `npm run lint` + `npm run build` + verifica
-  browser (parità con la feature sportelli).
+- **Sola lettura (deciso con l'utente):** la spec elenca ADMIN come "Vede
+  prenotazioni"; i cambi di stato (`IN_CODA`/`CHIAMATA`/`SERVITA`/`SALTATA`) e la
+  chiamata del turno appartengono alla vista `(cassa)`. Niente Server Action qui.
+- **Filtro lato client:** il dataset admin è ragionevole e il filtro è puramente
+  presentazionale → nessun round-trip al server, coerente con lo stato locale
+  degli altri manager. Se il volume crescerà, si potrà passare a query filtrate.
+- **Date al confine server→client:** ISO string, come `OpeningWindowListItem`.
+- **`BookingStatus` generato è `as const`** → il suo tipo è esattamente l'unione
+  di letterali, quindi `b.status` è assegnabile a `BookingStatusValue` senza cast.
+- **Filtro data per giorno** via `formatDate` (dd/mm/yyyy), usato come chiave ed
+  etichetta per coerenza con il locale dell'app.
+- **Niente vitest configurato** → gate = `npm run lint` + `npm run build` +
+  verifica browser (parità con sportelli/aperture).
 
 ## Acceptance
 
-- `npm run lint` e `npm run build` passano; `/admin/aperture` rende dinamicamente.
-- Come `ADMIN`/`SYSADMIN`: apertura di una finestra su uno sportello attivo
-  genera gli slot attesi (es. 10:00–12:00 @ 10 min → 12 slot); chiusura di una
-  finestra senza prenotazioni la rimuove; chiusura bloccata se ci sono
-  prenotazioni.
+- `npm run lint` e `npm run build` passano; `/admin/prenotazioni` rende
+  dinamicamente. ✅
+- Senza prenotazioni: stato vuoto. Con prenotazioni: tabella ordinata per orario,
+  badge di stato, filtri per data/sportello/stato che restringono le righe;
+  filtro senza risultati → stato vuoto dedicato.
 
-## Status: COMMITTED (awaiting browser verification)
+## Status: IMPLEMENTED (awaiting browser verification + commit permission)
 
-- Branch: `feature/admin-aperture` (committed + pushed, non ancora merged).
-- `npm run lint` + `npm run build` passano. Verifica browser (DB + login admin)
-  ancora da fare.
-- Sezioni successive: `prenotazioni` table, `utenti` management, `(cassa)` queue.
+- Branch: `feature/admin-prenotazioni` (non ancora committato).
+- `npm run lint` + `npm run build` passano. Verifica browser (DB + login admin,
+  servono prenotazioni reali) ancora da fare. Commit in attesa di permesso.
+
+---
+
+# Feature collegata: Prenotazione reale dal calendario pubblico — `/prenota`
+
+## Goal
+
+Rendere reale il flusso pubblico: leggere gli slot dalle finestre di apertura,
+**persistere** la prenotazione e assegnare un numero di turno reale. Prima
+`/prenota` usava dati mockati (`lib/mock-data.ts`) e generava un turno fittizio;
+ora alimenta `/admin/prenotazioni` con dati veri.
+
+## Scope
+
+- `lib/booking-calendar.ts` — `getBookingCalendar()`: legge gli slot **futuri**
+  degli sportelli **attivi**, calcola `seatsLeft = capacità − prenotazioni`,
+  deriva lo stato (`statusFromSeats`) e raggruppa per giornata in `CalendarDay[]`
+  (gli `id` degli slot sono i veri cuid di `BookingSlot`). Sostituisce
+  `lib/mock-data.ts` (rimosso).
+- `lib/schemas/booking.ts` — `bookingFormSchema` condiviso (form + action):
+  `slotId`, `name` (≥2), `email`/`phone` opzionali (vuoto → undefined).
+- `actions/bookings.ts` — `createBooking`: Zod, in **transazione** verifica che
+  lo slot esista, sia futuro e non al completo, assegna il `ticketNumber`
+  **progressivo per giornata** e crea la `Booking` (`PRENOTATA`);
+  `revalidatePath('/prenota')` + `'/admin/prenotazioni'`. Nessun auth (parte
+  pubblica). Email Resend **rimandata** a uno step successivo.
+- `app/(public)/prenota/page.tsx` — server component `async` + `force-dynamic`
+  (la disponibilità cambia a ogni prenotazione); stato vuoto se non ci sono
+  giornate prenotabili.
+- `components/public/BookingForm.tsx` — validazione client + chiamata a
+  `createBooking`; al successo redirect a `/conferma` col turno reale, altrimenti
+  errore inline (es. slot pieno).
+
+## Notes / decisions
+
+- **Numerazione per giornata (deciso con l'utente):** il turno riparte ogni
+  giorno (max del giorno + 1). La numerazione legge-poi-scrive in transazione:
+  sotto forte concorrenza due richieste potrebbero collidere — accettabile per la
+  scala; all'occorrenza alzare l'isolamento o usare una sequenza dedicata.
+- **Giornate/fasce in fuso server:** chiavi giorno e label orario sono calcolate
+  con i metodi locali (`getHours`, ecc.), coerenti con come gli slot vengono
+  generati e mostrati.
+- **Fasce orarie, non sportelli:** se più sportelli sono aperti alla stessa ora,
+  i loro `BookingSlot` sono uniti in un'unica fascia con i posti **sommati**; il
+  tifoso prenota una fascia (`CalendarSlot.id` = istante ISO, non un singolo
+  sportello). Perciò `CalendarSlot` non espone più `counterName`.
+- **Bilanciamento sportelli a booking-time:** `createBooking` riceve l'istante
+  della fascia e, **dentro la transazione**, sceglie tra gli sportelli aperti a
+  quell'ora quello **meno carico** (`bookings` minori, tie-break per id). Così le
+  prenotazioni si distribuiscono tra gli sportelli sullo stato corrente del DB,
+  anche con richieste ravvicinate — non si concentrano su uno scelto al render.
+- **Stato giornata a 3 valori:** a livello di giornata il dot è solo Disponibile
+  / Completo / Chiuso; "Quasi pieno" resta solo sulla singola fascia (legenda
+  slot invariata).
+
+## Acceptance
+
+- `npm run lint` + `npm run build` passano; `/prenota` è dinamica (`ƒ`).
+- Con finestre aperte: il calendario mostra gli slot reali; prenotando si crea
+  una `Booking` e la conferma mostra il turno assegnato; lo slot riflette i posti
+  residui; la prenotazione compare in `/admin/prenotazioni`.
+
+## Status: IMPLEMENTED (awaiting browser verification + commit permission)
+
+- Stessa branch `feature/admin-prenotazioni` (le due feature sono complementari:
+  il flusso pubblico produce i dati che la tabella admin mostra).
+- Sezioni successive: email Resend di conferma, `utenti` management,
+  `(cassa)` queue + display realtime.

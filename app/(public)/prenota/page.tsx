@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import BookingCalendar from "@/components/public/BookingCalendar";
-import { MOCK_WEEK } from "@/lib/mock-data";
+import { getBookingCalendar } from "@/lib/booking-calendar";
 
 export const metadata: Metadata = {
   title: "Prenota il tuo turno — Torres Biglietteria",
@@ -8,12 +8,18 @@ export const metadata: Metadata = {
     "Scegli giorno e orario dal calendario e prenota il tuo turno alla biglietteria della Torres Sassari.",
 };
 
+// La disponibilità degli slot cambia a ogni prenotazione: niente prerender
+// statico, la pagina si renderizza a ogni richiesta sui dati reali.
+export const dynamic = "force-dynamic";
+
 /**
- * Calendario pubblico di prenotazione. Server component: passa i dati (per ora
- * mockati) al calendario interattivo. In futuro leggerà gli slot da Prisma in
- * base alle finestre di apertura attive.
+ * Calendario pubblico di prenotazione. Server component: legge gli slot reali
+ * dalle finestre di apertura attive (`getBookingCalendar`) e li passa al
+ * calendario interattivo. Se non ci sono giornate prenotabili, mostra un avviso.
  */
-export default function PrenotaPage() {
+export default async function PrenotaPage() {
+  const week = await getBookingCalendar();
+
   return (
     <div className="relative isolate overflow-hidden">
       {/* Bagliori decorativi dietro l'intestazione (puramente estetici) */}
@@ -43,7 +49,19 @@ export default function PrenotaPage() {
         </header>
 
         <div className="reveal reveal-1">
-          <BookingCalendar week={MOCK_WEEK} />
+          {week.length > 0 ? (
+            <BookingCalendar week={week} />
+          ) : (
+            <div className="rounded-3xl border border-dashed border-brand-surface-muted bg-white px-6 py-16 text-center shadow-sm shadow-brand-primary/5">
+              <p className="text-base font-semibold text-brand-primary">
+                Nessun orario disponibile al momento
+              </p>
+              <p className="mt-2 text-sm text-brand-muted">
+                Non ci sono ancora finestre di apertura prenotabili. Riprova più
+                tardi.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
