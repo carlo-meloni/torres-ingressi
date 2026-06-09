@@ -1,0 +1,166 @@
+// Torres Biglietteria — Prisma schema
+// Docs: https://pris.ly/d/prisma-schema
+//
+// Prisma 7: the client is generated with the `prisma-client` generator into a
+// custom `output` path (outside node_modules) and consumed via a driver adapter
+// (see lib/prisma.ts). The datasource `url` lives in prisma.config.ts.
+//
+// Migrations only — never `prisma db push`.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth & Roles ───────────────────────────────────────────────────────────
+
+enum Role {
+  SYSADMIN
+  ADMIN
+  BIGLIETTAIO
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  role          Role      @default(BIGLIETTAIO)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  openedWindows  OpeningWindow[] @relation("OpenedBy")
+  servedBookings Booking[]       @relation("ServedBy")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Counters (Sportelli) ───────────────────────────────────────────────────
+
+model Counter {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  openingWindows OpeningWindow[]
+}
+
+// ─── Opening Windows (Finestre di apertura) ─────────────────────────────────
+
+model OpeningWindow {
+  id           String   @id @default(cuid())
+  startTime    DateTime
+  endTime      DateTime
+  slotDuration Int      @default(10) // minuti
+  capacity     Int      @default(1) // prenotazioni per slot
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  counterId String
+  counter   Counter @relation(fields: [counterId], references: [id], onDelete: Cascade)
+
+  openedById String?
+  openedBy   User?   @relation("OpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+
+  slots BookingSlot[]
+
+  @@index([counterId])
+  @@index([openedById])
+  @@index([startTime])
+}
+
+// ─── Booking Slots (Turni) ──────────────────────────────────────────────────
+
+model BookingSlot {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  capacity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  openingWindowId String
+  openingWindow   OpeningWindow @relation(fields: [openingWindowId], references: [id], onDelete: Cascade)
+
+  bookings Booking[]
+
+  @@index([openingWindowId])
+  @@index([startTime])
+}
+
+// ─── Bookings (Prenotazioni) ────────────────────────────────────────────────
+
+enum BookingStatus {
+  PRENOTATA
+  IN_CODA
+  CHIAMATA
+  SERVITA
+  SALTATA
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  ticketNumber Int
+  status       BookingStatus @default(PRENOTATA)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  slotId String
+  slot   BookingSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  servedById String?
+  servedBy   User?   @relation("ServedBy", fields: [servedById], references: [id], onDelete: SetNull)
+
+  @@index([slotId])
+  @@index([servedById])
+  @@index([status])
+}
