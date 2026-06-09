@@ -1,54 +1,49 @@
-# Current Feature: Admin Dashboard scaffold — `(admin)` route group
+# Current Feature: Sportelli CRUD — `/admin/sportelli`
 
 ## Goal
 
-Build the authenticated admin/sysadmin dashboard shell described in
-`project-overview.md` → Project Structure → `app/(admin)/`: a sidebar layout and
-an overview page, with the sub-pages stubbed so navigation works end-to-end.
+Replace the placeholder at `app/(admin)/admin/sportelli/page.tsx` with a working
+CRUD for the `Counter` model (sportelli): create, edit, activate/deactivate, and
+delete counters from the admin dashboard.
 
 ## Scope
 
-- `app/(admin)/layout.tsx` — server component. Server-side RBAC guard via `auth()`:
-  - not authenticated → redirect to sign-in (preserving callback);
-  - authenticated but `BIGLIETTAIO` (no admin rights) → redirect to `/cassa/coda`.
-  - Renders the sidebar (`components/admin/Sidebar.tsx`), the signed-in user + a
-    sign-out server action, and the page content.
-- `components/admin/Sidebar.tsx` — client component: nav links with active-route
-  highlighting. The **Utenti** entry is shown only to `SYSADMIN`.
-- `app/(admin)/page.tsx` — overview with live stat cards (active counters,
-  bookings today, in queue, served today) read from Prisma.
-- Stub pages so the sidebar never 404s: `sportelli/`, `aperture/`, `prenotazioni/`,
-  `utenti/` (utenti is SYSADMIN-only). Each renders an "in costruzione" placeholder
-  via a shared `components/admin/PagePlaceholder.tsx`.
+- `app/(admin)/admin/sportelli/page.tsx` — server component. Loads counters via
+  Prisma (ordered active-first, then by name) with `_count.openingWindows`, maps
+  to a serializable `CounterListItem[]`, and renders `<CounterManager>`.
+- `actions/counters.ts` — Server Actions (`"use server"`): `createCounter`,
+  `updateCounter`, `toggleCounterActive`, `deleteCounter`. Each:
+  - guards RBAC via `auth()` (only `ADMIN`/`SYSADMIN`);
+  - validates with Zod (`name` 2–80, `description` ≤280 optional, `isActive`);
+  - returns the `{ success, data, error }` shape (`ActionResult<T>`);
+  - calls `revalidatePath("/admin/sportelli")`.
+- `components/admin/CounterManager.tsx` — client component. Local-state list
+  (seeded from server, updated on each successful action for instant feedback),
+  shared create/edit form, status badge, inline delete confirmation, and ephemeral
+  toasts for every admin action.
+- `types/counter.ts` — `CounterListItem`, `CounterInput`.
 
 ## Notes / decisions
 
-- RBAC helper: `ADMIN`/`SYSADMIN` may access `(admin)`; `BIGLIETTAIO` may not.
-- `auth()` reads cookies, so the whole `(admin)` segment renders dynamically — the
-  Prisma queries in the overview run per request, not at build time.
-- Sign-out uses a NextAuth v5 server-action `<form>` (no client SDK / SessionProvider).
-- No shadcn/ui is installed yet; UI is plain Tailwind v4 matching the existing
-  public pages and the `brand-*` theme tokens.
+- **Delete guard:** `deleteCounter` refuses if the counter has any
+  `OpeningWindow` (cascade would wipe windows → slots → bookings). The UI surfaces
+  the message and steers the user to *deactivate* instead.
+- **No toast lib installed** → a minimal self-contained `ToastViewport` inside
+  `CounterManager` (auto-dismiss after 4s), matching the design's "toast per ogni
+  azione admin" without adding a dependency.
+- Actions live in root-level `actions/` (project has no `src/`), consistent with
+  the existing `lib/`, `components/`, `types/` layout.
+- Mutations use Server Actions + `useTransition`; reads happen directly in the
+  server component (per coding-standards).
 
 ## Acceptance
 
-- `npm run build` and `npm run lint` pass.
-- Visiting `/admin` unauthenticated redirects to sign-in; as `BIGLIETTAIO` redirects
-  to `/cassa/coda`; as `ADMIN`/`SYSADMIN` shows the dashboard with a working sidebar.
+- `npm run lint` and `npm run build` pass; `/admin/sportelli` renders dynamically. ✅
+- As `ADMIN`/`SYSADMIN`: can create, edit, toggle, and delete counters; delete is
+  blocked for counters with aperture associate.
 
-## Routing note
+## Status: COMPLETED (awaiting review)
 
-The structure diagram in `project-overview.md` is schematic: a `page.tsx` at the
-route-group root (`app/(admin)/page.tsx`) resolves to `/` and collides with the
-public landing. The admin pages therefore live under `app/(admin)/admin/…` so they
-resolve to `/admin/*` — matching `proxy.ts` (`matcher: ["/admin/:path*"]`) and the
-sidebar links. The `(admin)/layout.tsx` (group root) still wraps them all.
-
-## Status: COMPLETED (scaffold)
-
-- Branch: `feature/admin-dashboard` (not yet committed — awaiting review).
-- `npm run build` and `npm run lint` pass; `/admin/*` routes render dynamically.
-- Files: `app/(admin)/layout.tsx`, `app/(admin)/admin/page.tsx` + 4 stub pages,
-  `components/admin/{Sidebar,PagePlaceholder}.tsx`.
-- Next: build out the individual sections (sportelli CRUD, aperture + slot
-  generation, prenotazioni table, utenti management) and the `(cassa)` group.
+- Branch: `feature/admin-sportelli` (not yet committed — awaiting permission).
+- Next sections: `aperture` (finestre + slot generation), `prenotazioni` table,
+  `utenti` management, and the `(cassa)` queue group.
