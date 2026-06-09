@@ -1,4 +1,57 @@
-# Current Feature: Prenotazioni (elenco admin) — `/admin/prenotazioni`
+# Current Feature: Gestione utenti — `/admin/utenti` (solo SYSADMIN)
+
+## Goal
+
+Sostituire il placeholder a `app/(admin)/admin/utenti/page.tsx` con la gestione
+completa degli account: CRUD di `User` con ruoli (`SYSADMIN`/`ADMIN`/
+`BIGLIETTAIO`), **riservata al sysadmin**. Coerente con la spec ("Gestione utenti
+e config globale: solo SYSADMIN") e con lo stesso pattern manager dei sportelli.
+
+## Scope
+
+- `types/user.ts` — `UserListItem` (forma serializzabile: `createdAt` ISO string,
+  `role` dall'enum Prisma) e `UserInput` (payload create/update; `password`
+  opzionale, vuota = invariata in modifica).
+- `lib/user-role.ts` — `ROLE_META` (etichetta + descrizione + classi badge
+  **letterali** sui token brand) e `ROLE_ORDER` (sysadmin→bigliettaio) per select
+  ed elenchi.
+- `actions/users.ts` — `createUser`/`updateUser`/`deleteUser`. Guardia
+  `requireSysadmin`. Zod: create con password obbligatoria (min 8), update con
+  password opzionale; email lowercased + unicità verificata; password cifrata con
+  bcrypt. Auto-protezione: un sysadmin non può eliminare sé stesso né togliersi
+  il ruolo sysadmin (no lockout). `revalidatePath('/admin/utenti')`.
+- `app/(admin)/admin/utenti/page.tsx` — server component. Guardia di ruolo
+  (ridondante col layout ma protegge la query), carica gli utenti per
+  `createdAt desc`, mappa a `UserListItem`, passa `currentUserId` e rende
+  `<UserManager>`.
+- `components/admin/UserManager.tsx` — client manager (pattern `CounterManager`):
+  lista con badge ruolo + indicatore "Tu", form create/edit con select ruolo
+  (disabilitato per sé stessi), password mostrata come "lascia vuota per non
+  cambiarla" in modifica, elimina con conferma (nascosta per sé stessi), toast.
+
+## Notes / decisions
+
+- **Solo SYSADMIN:** la spec assegna gestione utenti e config globale al solo
+  sysadmin; ADMIN/BIGLIETTAIO non vedono nemmeno la voce in sidebar (già gestito).
+- **Auto-protezione lato server:** le regole "no self-delete" e "no self-demote"
+  sono applicate nelle Server Action (sorgente di verità), non solo nascoste in UI.
+- **Password con bcrypt (cost 10):** coerente con `auth.ts` e `/api/auth/register`.
+- **Niente vitest configurato** → gate = `npm run lint` + `npm run build`.
+
+## Acceptance
+
+- `npm run lint` e `npm run build` passano; `/admin/utenti` rende dinamicamente
+  solo per sysadmin (ADMIN/BIGLIETTAIO → redirect `/admin`).
+- Creazione/modifica/eliminazione utenti funzionano; password nuova consente il
+  login; email duplicata e auto-azioni proibite mostrano errore.
+
+## Status: IMPLEMENTED (awaiting browser verification + commit permission)
+
+- Branch: `feature/admin-utenti` (non ancora committato).
+
+---
+
+# Feature precedente: Prenotazioni (elenco admin) — `/admin/prenotazioni`
 
 ## Goal
 
