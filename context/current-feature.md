@@ -1,49 +1,96 @@
-# Current Feature: Sportelli CRUD — `/admin/sportelli`
+# Current Feature: Aperture (finestre + slot) — `/admin/aperture`
 
 ## Goal
 
-Replace the placeholder at `app/(admin)/admin/sportelli/page.tsx` with a working
-CRUD for the `Counter` model (sportelli): create, edit, activate/deactivate, and
-delete counters from the admin dashboard.
+Replace the placeholder at `app/(admin)/admin/aperture/page.tsx` with a working
+manager for the `OpeningWindow` model: un admin **apre** uno sportello definendo
+una finestra oraria (inizio, fine, durata slot, capacità) — il sistema **genera
+gli slot prenotabili** (`BookingSlot`) — e può **chiudere** (eliminare) una
+finestra. Coerente con "Apri/chiudi finestre" della spec.
 
 ## Scope
 
-- `app/(admin)/admin/sportelli/page.tsx` — server component. Loads counters via
-  Prisma (ordered active-first, then by name) with `_count.openingWindows`, maps
-  to a serializable `CounterListItem[]`, and renders `<CounterManager>`.
-- `actions/counters.ts` — Server Actions (`"use server"`): `createCounter`,
-  `updateCounter`, `toggleCounterActive`, `deleteCounter`. Each:
-  - guards RBAC via `auth()` (only `ADMIN`/`SYSADMIN`);
-  - validates with Zod (`name` 2–80, `description` ≤280 optional, `isActive`);
-  - returns the `{ success, data, error }` shape (`ActionResult<T>`);
-  - calls `revalidatePath("/admin/sportelli")`.
-- `components/admin/CounterManager.tsx` — client component. Local-state list
-  (seeded from server, updated on each successful action for instant feedback),
-  shared create/edit form, status badge, inline delete confirmation, and ephemeral
-  toasts for every admin action.
-- `types/counter.ts` — `CounterListItem`, `CounterInput`.
+- `lib/slots.ts` — logica **pura** di generazione slot da una finestra
+  (`generateSlotRanges`): dato `windowStart`/`windowEnd`/`slotDurationMinutes`,
+  ritorna gli intervalli `{ startTime, endTime }` allineati alla durata.
+  Isolata e testabile (nessuna dipendenza da Prisma/Next).
+- `types/opening-window.ts` — `OpeningWindowListItem` (forma serializzabile per
+  il client: date come ISO string), `OpeningWindowInput`, `CounterOption`.
+- `actions/opening-windows.ts` — Server Actions (`"use server"`):
+  - `createOpeningWindow` — guardia RBAC (`ADMIN`/`SYSADMIN`), Zod
+    (start < end, durata 1–240 min, capacità 1–100, sportello attivo esistente,
+    nessuna sovrapposizione con altre finestre dello stesso sportello),
+    genera la finestra **e** i suoi slot in **una transazione**
+    (`prisma.$transaction`), ritorna `ActionResult`, `revalidatePath`.
+  - `deleteOpeningWindow` — chiude/elimina una finestra; **rifiuta** se ha
+    prenotazioni associate (il cascade travolgerebbe slot → prenotazioni).
+- `app/(admin)/admin/aperture/page.tsx` — server component. Carica le finestre
+  (con nome sportello, `_count.slots`, conteggio prenotazioni) e gli sportelli
+  **attivi** per la select del form; mappa a forma serializzabile; rende
+  `<OpeningWindowManager>`.
+- `components/admin/OpeningWindowManager.tsx` — client component (pattern
+  `CounterManager`): stato locale, form di apertura con select sportello +
+  `datetime-local` + durata/capacità, riga finestra con conteggio slot/
+  prenotazioni, conferma inline di chiusura, toast effimeri.
+
+### Form stack: react-hook-form + zod + shadcn/ui
+
+- **shadcn/ui inizializzato manualmente** (non via CLI, per non riscrivere il
+  tema Tailwind v4 brand): `components.json`, `lib/utils.ts` (`cn`), token
+  semantici shadcn in `app/globals.css` **mappati sulla brand palette**
+  (`--primary`=navy, `--ring`=accento, `--destructive`=status-full, ecc.), e le
+  primitive `components/ui/{button,input,label,select,form}.tsx`.
+- **`Button`** ha una variante extra `brand` (gradiente accento Torres) per
+  mantenere lo stile dei CTA esistenti.
+- **Schema condiviso** `lib/schemas/opening-window.ts`
+  (`openingWindowFormSchema`): importato sia dal form (`zodResolver`) sia dalla
+  Server Action → validazione e messaggi identici sui due lati. Gli orari sono
+  stringhe `datetime-local`; la Server Action le converte in `Date`.
+- `useWatch` (non `form.watch`) per l'anteprima slot → compatibile col React
+  Compiler.
+- **Date/ora: picker shadcn, non input nativo.** `components/ui/date-time-picker.tsx`
+  (Popover + `Calendar` su react-day-picker v10 + input orario) sostituisce
+  `<input type="datetime-local">`, il cui formato a schermo seguiva il locale del
+  browser (es. `mm/dd/yyyy`). Il valore resta la stringa "YYYY-MM-DDTHH:mm" (schema
+  invariato), ma la visualizzazione è **sempre `dd/mm/yyyy`** via `lib/format.ts`.
+  Calendario in locale italiano, settimana da lunedì.
+- **Formato date centralizzato** in `lib/format.ts` (`formatDate` → dd/mm/yyyy,
+  `formatTime` → HH:mm), usato dal picker e dalla riga finestra.
+- Dipendenze aggiunte: `react-hook-form`, `@hookform/resolvers`,
+  `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`,
+  `@radix-ui/react-{slot,label,select,popover}`, `react-day-picker`, `date-fns`;
+  `zod` pinnato come dep diretta.
+- **Sportelli (`CounterManager`) non migrato:** resta sul form "plain"; migrabile
+  a questo stack in un passo successivo.
 
 ## Notes / decisions
 
-- **Delete guard:** `deleteCounter` refuses if the counter has any
-  `OpeningWindow` (cascade would wipe windows → slots → bookings). The UI surfaces
-  the message and steers the user to *deactivate* instead.
-- **No toast lib installed** → a minimal self-contained `ToastViewport` inside
-  `CounterManager` (auto-dismiss after 4s), matching the design's "toast per ogni
-  azione admin" without adding a dependency.
-- Actions live in root-level `actions/` (project has no `src/`), consistent with
-  the existing `lib/`, `components/`, `types/` layout.
-- Mutations use Server Actions + `useTransition`; reads happen directly in the
-  server component (per coding-standards).
+- **Solo apri/chiudi, niente modifica:** la spec dice "Apri/chiudi finestre".
+  Modificare gli orari dopo la generazione degli slot (eventualmente già
+  prenotati) è complesso e fuori scope → solo create + delete.
+- **Generazione slot in transazione:** finestra e slot nascono insieme; se la
+  generazione fallisce, niente finestra orfana.
+- **Guardia sovrapposizione:** due finestre sovrapposte sullo stesso sportello
+  genererebbero slot duplicati/ambigui → bloccate in fase di creazione.
+- **Delete guard:** `deleteOpeningWindow` rifiuta se esistono prenotazioni sugli
+  slot della finestra (coerente col delete guard di `deleteCounter`).
+- **Date al confine server→client:** passate come ISO string (i client component
+  ricevono solo primitivi, come `CounterListItem`).
+- **Niente vitest configurato** nel progetto → la logica di `lib/slots.ts` è
+  pura/testabile, ma il gate resta `npm run lint` + `npm run build` + verifica
+  browser (parità con la feature sportelli).
 
 ## Acceptance
 
-- `npm run lint` and `npm run build` pass; `/admin/sportelli` renders dynamically. ✅
-- As `ADMIN`/`SYSADMIN`: can create, edit, toggle, and delete counters; delete is
-  blocked for counters with aperture associate.
+- `npm run lint` e `npm run build` passano; `/admin/aperture` rende dinamicamente.
+- Come `ADMIN`/`SYSADMIN`: apertura di una finestra su uno sportello attivo
+  genera gli slot attesi (es. 10:00–12:00 @ 10 min → 12 slot); chiusura di una
+  finestra senza prenotazioni la rimuove; chiusura bloccata se ci sono
+  prenotazioni.
 
-## Status: COMPLETED (awaiting review)
+## Status: COMMITTED (awaiting browser verification)
 
-- Branch: `feature/admin-sportelli` (not yet committed — awaiting permission).
-- Next sections: `aperture` (finestre + slot generation), `prenotazioni` table,
-  `utenti` management, and the `(cassa)` queue group.
+- Branch: `feature/admin-aperture` (committed + pushed, non ancora merged).
+- `npm run lint` + `npm run build` passano. Verifica browser (DB + login admin)
+  ancora da fare.
+- Sezioni successive: `prenotazioni` table, `utenti` management, `(cassa)` queue.
