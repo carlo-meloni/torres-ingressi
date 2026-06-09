@@ -18,7 +18,7 @@ export default function SlotPicker({
 }: SlotPickerProps) {
   if (day.slots.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-brand-surface-muted bg-white px-5 py-10 text-center text-sm text-brand-muted">
+      <p className="rounded-2xl border border-dashed border-brand-surface-muted bg-brand-surface px-5 py-12 text-center text-sm text-brand-muted">
         Biglietteria chiusa in questa giornata. Scegli un altro giorno.
       </p>
     );
@@ -27,15 +27,15 @@ export default function SlotPicker({
   return (
     <div className="flex flex-col gap-5">
       {/* Legenda colori */}
-      <ul className="flex flex-wrap gap-x-5 gap-y-2">
+      <ul className="flex flex-wrap gap-2">
         {STATUS_LEGEND.map((status) => {
           const meta = SLOT_STATUS_META[status];
           return (
             <li
               key={status}
-              className="flex items-center gap-2 text-xs text-brand-muted"
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-surface px-2.5 py-1 text-xs font-medium text-brand-muted"
             >
-              <span className={`size-2.5 rounded-full ${meta.dot}`} />
+              <span className={`size-2 rounded-full ${meta.dot}`} />
               {meta.label}
             </li>
           );
@@ -56,12 +56,12 @@ export default function SlotPicker({
               onClick={() => onSelect(slot)}
               aria-pressed={isSelected}
               className={[
-                "group relative flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3.5 text-sm font-semibold transition-all duration-200",
+                "group relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3.5 text-sm font-semibold tabular-nums transition-all duration-200 ease-out-soft",
                 isSelected
-                  ? "border-brand-accent bg-brand-accent text-white shadow-md shadow-brand-accent/25"
+                  ? "border-transparent bg-linear-to-b from-brand-accent to-brand-accent-hover text-white shadow-lg shadow-brand-accent/30 ring-1 ring-brand-accent/30"
                   : meta.selectable
-                    ? "border-brand-surface-muted bg-white text-brand-primary hover:-translate-y-0.5 hover:border-brand-accent/50 hover:shadow-sm"
-                    : "cursor-not-allowed border-brand-surface-muted bg-brand-surface text-brand-muted/60",
+                    ? "border-brand-surface-muted bg-white text-brand-primary hover:-translate-y-0.5 hover:border-brand-accent/40 hover:shadow-md hover:shadow-brand-accent/10"
+                    : "cursor-not-allowed border-dashed border-brand-surface-muted bg-brand-surface text-brand-muted/60",
               ].join(" ")}
             >
               <span className="flex items-center gap-1.5">
