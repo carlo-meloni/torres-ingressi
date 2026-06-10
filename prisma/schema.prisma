@@ -79,6 +79,17 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ─── Site Content (Contenuti editoriali) ────────────────────────────────────
+
+/// Contenuti testuali del sito modificabili dal SYSADMIN. Riga singola
+/// (singleton) con id fisso "default": l'app legge/scrive sempre quella riga.
+model SiteSetting {
+  id           String   @id @default("default")
+  heroTitle    String
+  heroSubtitle String
+  updatedAt    DateTime @updatedAt
+}
+
 // ─── Counters (Sportelli) ───────────────────────────────────────────────────
 
 model Counter {

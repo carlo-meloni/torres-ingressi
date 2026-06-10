@@ -1,4 +1,59 @@
-# Current Feature: Dashboard bigliettaio `(cassa)` + coda realtime (Pusher)
+# Current Feature: Contenuti hero modificabili dal SYSADMIN — `/admin/contenuti`
+
+## Goal
+
+Permettere al `SYSADMIN` di modificare i testi dell'hero della landing pubblica
+(`app/(public)/page.tsx`) senza toccare il codice. Su scelta dell'utente, sono
+editabili **solo titolo e sottotitolo** (la CTA "Prenota ora" resta fissa).
+
+## Scope
+
+- `prisma/schema.prisma` — nuovo model **singleton** `SiteSetting` (`id` fisso
+  `"default"`, `heroTitle`, `heroSubtitle`, `updatedAt`). Migration
+  `add_site_settings` (creata e applicata; client rigenerato).
+- `lib/site-content.ts` — `SITE_SETTING_ID`, tipo `HeroContent`, `DEFAULT_HERO`
+  (i testi attuali come fallback) e `getHeroContent()` (legge la riga singleton
+  con fallback ai default se non ancora salvata).
+- `lib/schemas/site-content.ts` — `heroContentSchema` Zod condiviso (form +
+  action): `title`/`subtitle` trimmed, lunghezze min/max.
+- `actions/site-content.ts` — `updateHeroContent`: guardia `requireSysadmin`,
+  Zod, `upsert` sulla riga singleton, `revalidatePath('/','/admin/contenuti')`.
+- `components/admin/HeroContentForm.tsx` — client form (pattern manager): textarea
+  multilinea per titolo/sottotitolo, stato `dirty`, annulla, toast.
+- `app/(admin)/admin/contenuti/page.tsx` — server component, guardia di ruolo
+  (redirect non-sysadmin → `/admin`), carica `getHeroContent()` → `<HeroContentForm>`.
+- `components/admin/Sidebar.tsx` — voce "Contenuti" (solo `SYSADMIN`).
+- `app/(public)/page.tsx` — ora `async` + `force-dynamic`; i 4 `<h1>` hardcoded
+  diventano un unico titolo `whitespace-pre-line` (gli a capo del testo salvato
+  fanno le righe) + sottotitolo, entrambi da `getHeroContent()`.
+
+## Notes / decisions
+
+- **Solo titolo + sottotitolo (deciso con l'utente):** opzione più semplice; le
+  righe accent (luogo/orario) e la CTA non sono più configurabili. Il titolo
+  multilinea preserva gli a capo via `whitespace-pre-line`.
+- **Singleton con id fisso:** una sola riga di config (`"default"`); nessun seed
+  richiesto — `getHeroContent` fa fallback ai `DEFAULT_HERO` finché non si salva.
+- **`force-dynamic` sulla landing:** prima statica; ora legge il DB a ogni
+  richiesta così che ogni salvataggio sysadmin sia subito visibile (la
+  `revalidatePath('/')` copre comunque la cache).
+- **Niente vitest configurato** (nessuno script `test`) → gate = `npm run lint` +
+  `npm run build`.
+
+## Acceptance
+
+- `npm run lint` (solo warning pre-esistente su `STEPS`) e `npm run build`
+  passano; `/` è dinamica (`ƒ`), `/admin/contenuti` registrata. ✅
+- `/admin/contenuti` rende solo per sysadmin (ADMIN/BIGLIETTAIO → redirect
+  `/admin`); salvando, l'hero pubblico mostra i nuovi testi.
+
+## Status: IMPLEMENTED (awaiting browser verification + commit permission)
+
+- Lavorato su `main` (working tree). `npm run lint` + `npm run build` passano.
+
+---
+
+# Feature precedente: Dashboard bigliettaio `(cassa)` + coda realtime (Pusher)
 
 ## Goal
 

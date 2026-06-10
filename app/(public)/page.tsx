@@ -1,6 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import logo from "@/public/logo.webp";
+import { getHeroContent } from "@/lib/site-content";
+
+// I testi dell'hero sono modificabili dal SYSADMIN (DB): rendi la pagina
+// dinamica così che ogni salvataggio sia subito visibile.
+export const dynamic = "force-dynamic";
 
 const STEPS = [
   {
@@ -21,7 +26,9 @@ const STEPS = [
 ] as const;
 
 /** Landing pubblica: presenta la biglietteria e invita alla prenotazione. */
-export default function LandingPage() {
+export default async function LandingPage() {
+  const hero = await getHeroContent();
+
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -43,27 +50,13 @@ export default function LandingPage() {
         />
 
         <div className="relative mx-auto flex w-full max-w-5xl flex-col items-start gap-7 px-5 py-24 sm:py-32">
-          
-
-          <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
-            Prelazione Abbonamenti 2026-2027 {" "}
+          {/* Titolo multilinea: gli a capo del testo salvato diventano righe. */}
+          <h1 className="reveal reveal-1 max-w-8xl whitespace-pre-line text-balance text-5xl leading-[1.15] sm:text-4xl">
+            {hero.title}
           </h1>
 
-          <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
-            <span className="text-brand-accent">Viale Umberto 26 - Sassari (Hubinsula)</span>
-          </h1>
-
-           <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
-            Dal 15 Luglio
-          </h1>
-
-          <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
-            <span className="text-brand-accent">17:00 - 20:00 {" "}</span>
-          </h1>
-
-          <p className="reveal reveal-2 max-w-xl text-lg leading-relaxed text-white/75">
-            Scegli giorno e orario dal calendario: riceverai il tuo numero di
-            turno e saprai esattamente quando passare allo sportello.
+          <p className="reveal reveal-2 max-w-xl whitespace-pre-line text-lg leading-relaxed text-white/75">
+            {hero.subtitle}
           </p>
 
           <div className="reveal reveal-3 flex flex-wrap items-center gap-3.5 pt-1">
