@@ -25,3 +25,8 @@ export function formatDate(value: Date | string | number): string {
 export function formatTime(value: Date | string | number): string {
   return TIME_FMT.format(new Date(value));
 }
+
+/** Formatta un numero di turno con tre cifre (es. 42 → `042`). */
+export function formatTicket(n: number): string {
+  return String(n).padStart(3, "0");
+}

@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/sportelli", label: "Sportelli" },
   { href: "/admin/aperture", label: "Aperture" },
   { href: "/admin/prenotazioni", label: "Prenotazioni" },
+  { href: "/coda", label: "Coda" },
   { href: "/admin/utenti", label: "Utenti", roles: ["SYSADMIN"] },
 ];
 

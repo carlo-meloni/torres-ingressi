@@ -105,19 +105,44 @@ export interface DisplayCounter {
 /**
  * Istantanea della coda mostrata sullo schermo pubblico.
  *
- * Per ora i numeri sono interi mockati e l'avanzamento è simulato lato client
- * (vedi `lib/mock-queue.ts` e `QueueDisplay`). Con i dati reali questa
- * istantanea arriverà dal backend e gli avanzamenti via WebSocket/Pusher.
+ * Costruita dai dati reali del giorno (`lib/queue.ts`) e aggiornata in tempo
+ * reale via Pusher: lo schermo pubblico riceve questa istantanea come payload
+ * dell'evento `queue-updated` (vedi `lib/realtime.ts`).
  */
 export interface QueueSnapshot {
   /** Sportelli aperti, in ordine di visualizzazione. */
   counters: DisplayCounter[];
   /** Numero servito ora a ciascuno sportello (per id); `null` se libero. */
   serving: Record<string, number | null>;
-  /** Sportello dell'ultima chiamata: è l'hero dello schermo. */
-  latestCounterId: string;
+  /** Sportello dell'ultima chiamata (è l'hero dello schermo); `null` se nessuna. */
+  latestCounterId: string | null;
   /** Prossimi numeri in coda, in ordine di chiamata. */
   upcoming: number[];
-  /** Primo numero ancora non assegnato (alimenta la coda nella simulazione). */
-  nextFree: number;
+}
+
+/* ── Coda / dashboard bigliettaio (cassa) ─────────────────────────────── */
+
+/** Una prenotazione in coda, nella forma serializzabile usata dalla cassa. */
+export interface QueueBooking {
+  id: string;
+  ticketNumber: number;
+  name: string;
+  status: BookingStatusValue;
+}
+
+/** Coda di un singolo sportello nella dashboard del bigliettaio. */
+export interface CounterQueue {
+  counterId: string;
+  counterName: string;
+  /** Turno chiamato ora a questo sportello (stato `CHIAMATA`); `null` se nessuno. */
+  current: QueueBooking | null;
+  /** Turni in attesa (`PRENOTATA`/`IN_CODA`), in ordine di chiamata. */
+  waiting: QueueBooking[];
+}
+
+/** Dati della dashboard bigliettaio: code per sportello + statistica del giorno. */
+export interface CassaQueueData {
+  counters: CounterQueue[];
+  /** Numero di turni serviti oggi (stato `SERVITA`). */
+  servedToday: number;
 }

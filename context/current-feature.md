@@ -1,4 +1,65 @@
-# Current Feature: Gestione utenti — `/admin/utenti` (solo SYSADMIN)
+# Current Feature: Dashboard bigliettaio `(cassa)` + coda realtime (Pusher)
+
+## Goal
+
+Creare la dashboard del bigliettaio (`/coda`, route group `(cassa)`) per gestire la
+coda reale del giorno — chiamare il prossimo turno, segnarlo servito o saltato — e
+collegare lo schermo pubblico `/display` ai dati reali (sostituendo il mock). Gli
+aggiornamenti sono realtime via Pusher: ogni cambio di stato emette un evento e sia la
+dashboard sia lo schermo si aggiornano senza refresh.
+
+## Scope
+
+- `lib/realtime.ts` — Pusher lato server: `QUEUE_CHANNEL`/`QUEUE_UPDATED`,
+  `emitQueueUpdate(snapshot)` (best-effort; no-op senza chiavi).
+- `lib/use-queue-channel.ts` — hook client (`pusher-js`): sottoscrive il canale e
+  ritorna lo snapshot live; `onPing` per la cassa (→ `router.refresh()`). No-op senza
+  env pubbliche.
+- `lib/queue.ts` — `getQueue()`: un'unica lettura del giorno → `{ cassa, snapshot }`
+  (sportelli aperti oggi, turno `CHIAMATA` e attesa per sportello, `servedToday`).
+- `actions/queue.ts` — `callNext(counterId)` (chiude la `CHIAMATA` corrente → `SERVITA`,
+  chiama il prossimo in attesa, in transazione), `markServed`/`markSkipped` (solo da
+  `CHIAMATA`). Guardia `requireQueueAccess` (qualsiasi autenticato). Ogni mutazione →
+  `emitQueueUpdate` + `revalidatePath('/coda','/display')`.
+- `app/(cassa)/layout.tsx` — guardia auth (qualsiasi ruolo), header brand + logout.
+- `app/(cassa)/coda/page.tsx` — server component `force-dynamic` → `<QueuePanel>`.
+- `components/cassa/QueuePanel.tsx` + `CallNextButton.tsx` — card per sportello (turno
+  in chiamata, Servita/Salta, prossimi), realtime come "ping".
+- `types/booking.ts` — `QueueSnapshot` rifinito (`latestCounterId` nullable, niente
+  `nextFree`) + tipi cassa (`QueueBooking`/`CounterQueue`/`CassaQueueData`).
+- `app/(public)/display/page.tsx` + `components/display/QueueDisplay.tsx` — dati reali +
+  hook realtime; rimossa la simulazione. `formatTicket` spostato in `lib/format.ts`;
+  **eliminato** `lib/mock-queue.ts`.
+- `components/admin/Sidebar.tsx` — voce "Coda" → `/coda`. `.env.example` — chiavi Pusher.
+
+## Notes / decisions
+
+- **URL `/coda`:** `(cassa)` è un route group (niente segmento URL), come da spec
+  in `context/project-overview.md`.
+- **RBAC coda:** `BIGLIETTAIO`/`ADMIN`/`SYSADMIN` (qualsiasi autenticato), coerente con i
+  ruoli che "gestiscono la coda".
+- **Pusher opzionale:** senza chiavi il realtime è disattivato ma l'app funziona via
+  `revalidatePath` (il client che agisce vede comunque l'aggiornamento). `pusher-js`
+  resta confinato al bundle client.
+- **Cassa = "ping":** sull'evento la dashboard fa `router.refresh()` (ricarica i dati
+  server) invece di sincronizzare una seconda forma dati.
+- **Niente vitest configurato** → gate = `npm run lint` + `npm run build`.
+
+## Acceptance
+
+- `npm run lint` e `npm run build` passano; `/coda` rende dinamicamente per utenti
+  autenticati (non autenticato → sign-in con callback).
+- "Chiama prossimo" porta il turno a `CHIAMATA` e aggiorna `/display` in realtime;
+  Servita/Salta concludono il turno; `servedToday` incrementa su Servita.
+
+## Status: IMPLEMENTED (awaiting browser verification + commit permission)
+
+- Branch: `feature/cassa-coda` (non ancora committato).
+- Verifica realtime end-to-end richiede chiavi Pusher nel `.env`.
+
+---
+
+# Feature precedente: Gestione utenti — `/admin/utenti` (solo SYSADMIN)
 
 ## Goal
 
