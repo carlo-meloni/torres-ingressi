@@ -25,7 +25,7 @@ export default function LandingPage() {
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-linear-to-br from-brand-accent via-brand-primary-dark to-brand-primary-dark text-white">
+      <section className="min-h-[calc(100vh-12rem)] relative overflow-hidden bg-linear-to-br from-brand-accent via-brand-primary-dark to-brand-primary-dark text-white">
         {/* Stemma in filigrana */}
         <Image
           src={logo}

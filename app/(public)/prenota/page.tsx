@@ -21,7 +21,7 @@ export default async function PrenotaPage() {
   const week = await getBookingCalendar();
 
   return (
-    <div className="relative isolate overflow-hidden">
+    <div className="relative isolate overflow-hidden min-h-[calc(100vh-12rem)] ">
       {/* Bagliori decorativi dietro l'intestazione (puramente estetici) */}
       <div
         aria-hidden
