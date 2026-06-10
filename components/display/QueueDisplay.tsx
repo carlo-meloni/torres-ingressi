@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { QueueSnapshot } from "@/types/booking";
-import { callNext, formatTicket } from "@/lib/mock-queue";
+import { formatTicket } from "@/lib/format";
+import { useQueueChannel } from "@/lib/use-queue-channel";
+import { useCallChime } from "@/lib/use-call-chime";
 import logo from "@/public/logo.webp";
 
 interface QueueDisplayProps {
   initial: QueueSnapshot;
 }
-
-/** Ogni quanto la simulazione chiama il numero successivo (ms). */
-const CALL_INTERVAL_MS = 5000;
 
 /**
  * Schermo pubblico della coda: dark mode, alto contrasto e numeri giganti in
@@ -20,35 +19,25 @@ const CALL_INTERVAL_MS = 5000;
  * monitor sempre acceso. Copre l'intera viewport (sopra il chrome pubblico)
  * ed è pensato per restare aperto a tutto schermo.
  *
- * L'avanzamento è simulato lato client a partire dai dati mock: a intervalli
- * regolari viene chiamato il numero successivo, ruotando fra gli sportelli.
- * Con i dati reali questo stato arriverà da eventi realtime (WebSocket/Pusher).
+ * Parte dall'istantanea iniziale letta dal server e si aggiorna in tempo reale
+ * via Pusher (evento `queue-updated`): ogni chiamata del bigliettaio rimonta il
+ * numero hero e fa ripartire l'animazione.
  */
 export default function QueueDisplay({ initial }: QueueDisplayProps) {
-  const [queue, setQueue] = useState<QueueSnapshot>(initial);
-
-  // Simulazione: chiama il prossimo numero ruotando fra gli sportelli aperti.
-  useEffect(() => {
-    let counterIndex = queue.counters.findIndex(
-      (c) => c.id === queue.latestCounterId
-    );
-
-    const id = setInterval(() => {
-      setQueue((prev) => {
-        counterIndex = (counterIndex + 1) % prev.counters.length;
-        return callNext(prev, prev.counters[counterIndex].id);
-      });
-    }, CALL_INTERVAL_MS);
-
-    return () => clearInterval(id);
-    // Avvio una sola volta: la simulazione prosegue dallo stato precedente.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const queue = useQueueChannel(initial);
 
   const latestCounter =
     queue.counters.find((c) => c.id === queue.latestCounterId) ??
-    queue.counters[0];
-  const latestTicket = queue.serving[latestCounter.id];
+    queue.counters[0] ??
+    null;
+  const latestTicket = latestCounter ? queue.serving[latestCounter.id] : null;
+
+  // Campanello a ogni nuovo numero chiamato (sportello + ticket identificano la chiamata).
+  const callKey =
+    latestCounter && latestTicket != null
+      ? `${latestCounter.id}:${latestTicket}`
+      : null;
+  const { ready: soundReady, enableSound } = useCallChime(callKey);
 
   return (
     <div className="fixed inset-0 z-30 overflow-hidden bg-brand-primary-dark text-white">
@@ -93,6 +82,16 @@ export default function QueueDisplay({ initial }: QueueDisplayProps) {
           </Link>
 
           <div className="flex items-center gap-6 sm:gap-9">
+            {!soundReady && (
+              <button
+                type="button"
+                onClick={enableSound}
+                className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/75 transition-colors hover:border-white/40 hover:text-white"
+              >
+                <span aria-hidden>🔔</span>
+                Attiva audio
+              </button>
+            )}
             <span className="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/65">
               <span className="relative flex size-2.5">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-status-open opacity-70" />
@@ -125,16 +124,18 @@ export default function QueueDisplay({ initial }: QueueDisplayProps) {
             </p>
           </div>
 
-          <div className="mt-3 inline-flex items-center gap-2.5 rounded-full bg-brand-accent px-7 py-2.5 shadow-lg shadow-brand-accent/30 sm:px-9 sm:py-3">
-            <span className="size-2 rounded-full bg-white/85" aria-hidden />
-            <span className="text-lg font-semibold uppercase tracking-[0.15em] text-white sm:text-2xl">
-              {latestCounter.name}
-            </span>
-          </div>
+          {latestCounter && latestTicket != null && (
+            <div className="mt-3 inline-flex items-center gap-2.5 rounded-full bg-brand-accent px-7 py-2.5 shadow-lg shadow-brand-accent/30 sm:px-9 sm:py-3">
+              <span className="size-2 rounded-full bg-white/85" aria-hidden />
+              <span className="text-lg font-semibold uppercase tracking-[0.15em] text-white sm:text-2xl">
+                {latestCounter.name}
+              </span>
+            </div>
+          )}
 
           {/* Annuncio accessibile del numero chiamato. */}
           <p aria-live="polite" className="sr-only">
-            {latestTicket != null
+            {latestTicket != null && latestCounter
               ? `Turno ${formatTicket(latestTicket)}, ${latestCounter.name}`
               : ""}
           </p>
@@ -145,7 +146,7 @@ export default function QueueDisplay({ initial }: QueueDisplayProps) {
           <ul className="mx-auto flex max-w-6xl flex-wrap items-stretch justify-center gap-3 sm:gap-4">
             {queue.counters.map((counter) => {
               const ticket = queue.serving[counter.id];
-              const isLatest = counter.id === latestCounter.id;
+              const isLatest = counter.id === latestCounter?.id;
               return (
                 <li
                   key={counter.id}
