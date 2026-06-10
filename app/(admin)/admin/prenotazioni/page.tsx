@@ -7,8 +7,9 @@ import type {
 
 /**
  * Elenco prenotazioni (vista admin, sola lettura). Carica lato server tutte le
- * prenotazioni con orario dello slot e sportello di riferimento, più gli
- * sportelli che hanno almeno una prenotazione per il filtro; mappa a forma
+ * prenotazioni con orario dello slot e lo sportello che le ha **servite** (se
+ * già chiamate; lo sportello non è più deciso alla prenotazione), più gli
+ * sportelli che compaiono tra le prenotazioni per il filtro; mappa a forma
  * serializzabile e delega filtro/visualizzazione a `<BookingsTable>`.
  *
  * La gestione di coda e cambi di stato resta nella vista bigliettaio `(cassa)`.
@@ -28,11 +29,9 @@ export default async function PrenotazioniPage() {
         select: {
           startTime: true,
           endTime: true,
-          openingWindow: {
-            select: { counter: { select: { id: true, name: true } } },
-          },
         },
       },
+      servedByCounter: { select: { id: true, name: true } },
     },
   });
 
@@ -46,17 +45,20 @@ export default async function PrenotazioniPage() {
     createdAt: b.createdAt.toISOString(),
     slotStart: b.slot.startTime.toISOString(),
     slotEnd: b.slot.endTime.toISOString(),
-    counterId: b.slot.openingWindow.counter.id,
-    counterName: b.slot.openingWindow.counter.name,
+    counterId: b.servedByCounter?.id ?? null,
+    counterName: b.servedByCounter?.name ?? null,
   }));
 
-  // Sportelli presenti tra le prenotazioni (dedup), in ordine alfabetico.
+  // Sportelli che hanno servito almeno una prenotazione (dedup), in ordine
+  // alfabetico — usati per il filtro per sportello.
   const counterOptions: BookingCounterOption[] = Array.from(
     new Map(
-      initialBookings.map((b) => [
-        b.counterId,
-        { id: b.counterId, name: b.counterName },
-      ]),
+      initialBookings
+        .filter((b) => b.counterId !== null)
+        .map((b) => [
+          b.counterId as string,
+          { id: b.counterId as string, name: b.counterName as string },
+        ]),
     ).values(),
   ).sort((a, b) => a.name.localeCompare(b.name));
 

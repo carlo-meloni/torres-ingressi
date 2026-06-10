@@ -43,7 +43,6 @@ export default async function ConfermaPage({
   const name = param(sp, "name");
   const date = param(sp, "date");
   const time = param(sp, "time");
-  const counter = param(sp, "counter");
   const email = param(sp, "email");
 
   // Senza un numero di turno non c'è nulla da confermare.
@@ -109,7 +108,6 @@ export default async function ConfermaPage({
         <dl className="w-full divide-y divide-brand-surface-muted rounded-2xl border border-brand-surface-muted bg-white text-left text-sm">
           <Detail label="Giorno" value={formatDate(date)} />
           <Detail label="Orario" value={time} />
-          <Detail label="Sportello" value={counter} />
           {email && <Detail label="Conferma inviata a" value={email} />}
         </dl>
 

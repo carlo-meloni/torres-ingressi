@@ -64,7 +64,6 @@ export default function BookingForm({ day, slot }: BookingFormProps) {
       name,
       date: result.data.date,
       time: result.data.time,
-      counter: result.data.counterName,
     });
     if (email) params.set("email", email);
     if (phone) params.set("phone", phone);
@@ -85,7 +84,8 @@ export default function BookingForm({ day, slot }: BookingFormProps) {
             {day.weekday} {day.dayNumber} {day.month}
           </span>{" "}
           alle <span className="font-semibold tabular-nums">{slot.time}</span>.
-          Lo sportello ti verrà assegnato e indicato nella conferma.
+          Lo sportello ti verrà indicato sullo schermo quando il tuo turno sarà
+          chiamato.
         </p>
       </div>
 

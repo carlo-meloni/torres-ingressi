@@ -101,6 +101,7 @@ model Counter {
   updatedAt   DateTime @updatedAt
 
   openingWindows OpeningWindow[]
+  servedBookings Booking[]       @relation("ServedByCounter")
 }
 
 // ─── Opening Windows (Finestre di apertura) ─────────────────────────────────
@@ -171,7 +172,14 @@ model Booking {
   servedById String?
   servedBy   User?   @relation("ServedBy", fields: [servedById], references: [id], onDelete: SetNull)
 
+  // Sportello che ha effettivamente chiamato il turno. Resta `null` finché la
+  // prenotazione non viene chiamata: lo sportello non è più deciso al momento
+  // della prenotazione, ma quando uno sportello libero chiama il turno.
+  servedByCounterId String?
+  servedByCounter   Counter? @relation("ServedByCounter", fields: [servedByCounterId], references: [id], onDelete: SetNull)
+
   @@index([slotId])
   @@index([servedById])
+  @@index([servedByCounterId])
   @@index([status])
 }

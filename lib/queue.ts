@@ -30,10 +30,11 @@ const ACTIVE_STATUSES = ["PRENOTATA", "IN_CODA", "CHIAMATA"] as const;
  * Costruisce coda bigliettaio + istantanea pubblica per oggi.
  *
  * Sportelli mostrati: quelli attivi con almeno una finestra di apertura che
- * inizia oggi. Le prenotazioni del giorno sono raggruppate per sportello:
- * `current` = il turno `CHIAMATA`, `waiting` = i turni in attesa per
- * `ticketNumber`. L'hero dello schermo (`latestCounterId`) è lo sportello con
- * la chiamata più recente (`updatedAt`).
+ * inizia oggi. La coda d'attesa è **condivisa**: i turni `PRENOTATA`/`IN_CODA`
+ * formano un'unica lista per `ticketNumber`, da cui qualunque sportello libero
+ * preleva. Per ogni sportello `current` è il turno che sta chiamando ora
+ * (`CHIAMATA` con `servedByCounterId` = quello sportello). L'hero dello schermo
+ * (`latestCounterId`) è lo sportello con la chiamata più recente (`updatedAt`).
  */
 export async function getQueue(): Promise<{
   cassa: CassaQueueData;
@@ -62,9 +63,7 @@ export async function getQueue(): Promise<{
         ticketNumber: true,
         status: true,
         updatedAt: true,
-        slot: {
-          select: { openingWindow: { select: { counterId: true } } },
-        },
+        servedByCounterId: true,
       },
     }),
     prisma.booking.count({
@@ -75,25 +74,16 @@ export async function getQueue(): Promise<{
     }),
   ]);
 
-  // Raggruppa le prenotazioni attive per sportello.
-  const byCounter = new Map<
-    string,
-    { current: QueueBooking | null; waiting: QueueBooking[] }
-  >();
-  for (const c of counters) {
-    byCounter.set(c.id, { current: null, waiting: [] });
-  }
+  // Turno in chiamata per sportello (CHIAMATA → servedByCounterId) + coda
+  // d'attesa condivisa (PRENOTATA/IN_CODA), già ordinata per ticketNumber.
+  const currentByCounter = new Map<string, QueueBooking>();
+  const waiting: QueueBooking[] = [];
 
   // Sportello dell'ultima chiamata (CHIAMATA con updatedAt massimo).
   let latestCounterId: string | null = null;
   let latestCalledAt = -Infinity;
 
   for (const b of bookings) {
-    const counterId = b.slot.openingWindow.counterId;
-    const bucket = byCounter.get(counterId);
-    // Ignora prenotazioni di sportelli non in elenco (es. non aperti oggi).
-    if (!bucket) continue;
-
     const item: QueueBooking = {
       id: b.id,
       ticketNumber: b.ticketNumber,
@@ -102,39 +92,35 @@ export async function getQueue(): Promise<{
     };
 
     if (b.status === "CHIAMATA") {
-      bucket.current = item;
+      // Una chiamata senza sportello non dovrebbe esistere (callNext lo imposta
+      // sempre); per sicurezza la ignoriamo dalle card per sportello.
+      if (!b.servedByCounterId) continue;
+      currentByCounter.set(b.servedByCounterId, item);
       const calledAt = b.updatedAt.getTime();
       if (calledAt > latestCalledAt) {
         latestCalledAt = calledAt;
-        latestCounterId = counterId;
+        latestCounterId = b.servedByCounterId;
       }
     } else {
-      bucket.waiting.push(item);
+      waiting.push(item);
     }
   }
 
-  const counterQueues: CounterQueue[] = counters.map((c) => {
-    const bucket = byCounter.get(c.id)!;
-    return {
-      counterId: c.id,
-      counterName: c.name,
-      current: bucket.current,
-      waiting: bucket.waiting,
-    };
-  });
+  const counterQueues: CounterQueue[] = counters.map((c) => ({
+    counterId: c.id,
+    counterName: c.name,
+    current: currentByCounter.get(c.id) ?? null,
+  }));
 
-  // Snapshot pubblico: numeri serviti per sportello + prossimi (globali).
+  // Snapshot pubblico: numero in chiamata per sportello + prossimi (condivisi).
   const serving: Record<string, number | null> = {};
-  for (const q of counterQueues) {
-    serving[q.counterId] = q.current?.ticketNumber ?? null;
+  for (const c of counters) {
+    serving[c.id] = currentByCounter.get(c.id)?.ticketNumber ?? null;
   }
-  const upcoming = counterQueues
-    .flatMap((q) => q.waiting)
-    .sort((a, b) => a.ticketNumber - b.ticketNumber)
-    .map((b) => b.ticketNumber);
+  const upcoming = waiting.map((b) => b.ticketNumber);
 
   return {
-    cassa: { counters: counterQueues, servedToday },
+    cassa: { counters: counterQueues, waiting, servedToday },
     snapshot: {
       counters: counters.map((c) => ({ id: c.id, name: c.name })),
       serving,

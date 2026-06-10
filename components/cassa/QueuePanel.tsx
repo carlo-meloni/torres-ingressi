@@ -12,6 +12,7 @@ import { useQueueChannel } from "@/lib/use-queue-channel";
 import type {
   CassaQueueData,
   CounterQueue,
+  QueueBooking,
   QueueSnapshot,
 } from "@/types/booking";
 
@@ -24,10 +25,12 @@ const EMPTY_SNAPSHOT: QueueSnapshot = {
 };
 
 /**
- * Dashboard del bigliettaio. Renderizza una card per sportello aperto oggi con il
- * turno in chiamata e i prossimi in coda. Le azioni (chiama prossimo / servita /
- * salta) sono Server Actions; i dati arrivano dal server component e si aggiornano
- * via `router.refresh()` a ogni evento realtime della coda.
+ * Dashboard del bigliettaio. La coda d'attesa è **condivisa**: in cima la lista
+ * dei prossimi turni, sotto una card per sportello aperto con il solo turno che
+ * sta chiamando ora. "Chiama prossimo" preleva dalla coda condivisa il primo
+ * turno il cui slot è già iniziato e lo assegna a quello sportello. Le azioni
+ * sono Server Actions; i dati arrivano dal server component e si aggiornano via
+ * `router.refresh()` a ogni evento realtime della coda.
  */
 export function QueuePanel({ initial }: { initial: CassaQueueData }) {
   const router = useRouter();
@@ -35,7 +38,7 @@ export function QueuePanel({ initial }: { initial: CassaQueueData }) {
   // Pusher come "ping": a ogni evento ricarichiamo i dati server (props fresche).
   useQueueChannel(EMPTY_SNAPSHOT, { onPing: () => router.refresh() });
 
-  const { counters, servedToday } = initial;
+  const { counters, waiting, servedToday } = initial;
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,19 +63,71 @@ export function QueuePanel({ initial }: { initial: CassaQueueData }) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {counters.map((counter) => (
-            <CounterCard key={counter.counterId} counter={counter} />
-          ))}
-        </div>
+        <>
+          <WaitingQueue waiting={waiting} />
+
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {counters.map((counter) => (
+              <CounterCard key={counter.counterId} counter={counter} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-/** Card di un singolo sportello: turno in chiamata, azioni e prossimi in coda. */
+/** Coda d'attesa condivisa: i prossimi turni che qualunque sportello può chiamare. */
+function WaitingQueue({ waiting }: { waiting: QueueBooking[] }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-2xl border border-brand-surface-muted bg-white p-5 shadow-sm">
+      <header className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-muted">
+          In attesa
+        </h2>
+        <span className="text-xs text-brand-muted">
+          {waiting.length} {waiting.length === 1 ? "turno" : "turni"}
+        </span>
+      </header>
+
+      {waiting.length === 0 ? (
+        <p className="py-4 text-center text-sm text-brand-muted">
+          Nessun turno in attesa.
+        </p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {waiting.slice(0, 12).map((b, i) => (
+            <li
+              key={b.id}
+              className={[
+                "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm",
+                i === 0
+                  ? "border-brand-accent/40 bg-brand-accent/5"
+                  : "border-brand-surface-muted bg-brand-surface/40",
+              ].join(" ")}
+            >
+              <span className="font-mono font-semibold tabular-nums text-brand-primary">
+                {formatTicket(b.ticketNumber)}
+              </span>
+              <span className="max-w-32 truncate text-brand-muted">
+                {b.name}
+              </span>
+            </li>
+          ))}
+          {waiting.length > 12 && (
+            <li className="flex items-center px-2 text-xs text-brand-muted">
+              + altri {waiting.length - 12}
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Card di un singolo sportello: solo il turno in chiamata e le sue azioni. */
 function CounterCard({ counter }: { counter: CounterQueue }) {
-  const { counterId, counterName, current, waiting } = counter;
+  const { counterId, counterName, current } = counter;
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -92,9 +147,6 @@ function CounterCard({ counter }: { counter: CounterQueue }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-muted">
           {counterName}
         </h2>
-        <span className="text-xs text-brand-muted">
-          {waiting.length} in attesa
-        </span>
       </header>
 
       {/* Turno in chiamata. */}
@@ -156,33 +208,6 @@ function CounterCard({ counter }: { counter: CounterQueue }) {
         <p className="text-sm font-medium text-status-full" role="alert">
           {error}
         </p>
-      )}
-
-      {/* Prossimi in coda. */}
-      {waiting.length > 0 && (
-        <div className="flex flex-col gap-2 border-t border-brand-surface-muted pt-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand-muted">
-            Prossimi
-          </span>
-          <ul className="flex flex-col gap-1.5">
-            {waiting.slice(0, 5).map((b) => (
-              <li
-                key={b.id}
-                className="flex items-center gap-3 text-sm text-brand-primary"
-              >
-                <span className="font-mono font-semibold tabular-nums text-brand-muted">
-                  {formatTicket(b.ticketNumber)}
-                </span>
-                <span className="truncate">{b.name}</span>
-              </li>
-            ))}
-            {waiting.length > 5 && (
-              <li className="text-xs text-brand-muted">
-                + altri {waiting.length - 5}
-              </li>
-            )}
-          </ul>
-        </div>
       )}
     </article>
   );

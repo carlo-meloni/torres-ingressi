@@ -86,7 +86,7 @@ export function BookingsTable({
             options={dateOptions.map((d) => ({ value: d, label: d }))}
           />
           <FilterSelect
-            label="Sportello"
+            label="Servito da"
             value={counterFilter}
             onValueChange={setCounterFilter}
             allLabel="Tutti gli sportelli"
@@ -116,7 +116,7 @@ export function BookingsTable({
               <tr className="border-b border-brand-surface-muted text-left text-xs font-semibold uppercase tracking-wide text-brand-muted">
                 <th className="px-4 py-3">Turno</th>
                 <th className="px-4 py-3">Tifoso</th>
-                <th className="px-4 py-3">Sportello</th>
+                <th className="px-4 py-3">Servito da</th>
                 <th className="px-4 py-3">Orario slot</th>
                 <th className="px-4 py-3">Stato</th>
               </tr>
@@ -153,7 +153,9 @@ function BookingRow({ booking }: { booking: BookingListItem }) {
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-brand-muted">{booking.counterName}</td>
+      <td className="px-4 py-3 text-brand-muted">
+        {booking.counterName ?? "—"}
+      </td>
       <td className="px-4 py-3 text-brand-muted">
         <span className="text-brand-primary">{formatDate(start)}</span>{" "}
         {formatTime(start)}–{formatTime(end)}

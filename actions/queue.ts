@@ -37,10 +37,18 @@ async function broadcastQueue(): Promise<void> {
 }
 
 /**
- * Chiama il prossimo turno a uno sportello. Se c'è già un turno chiamato lo
- * conclude (`SERVITA`) — "prossimo" implica che il corrente è servito — poi
- * mette `CHIAMATA` il primo turno in attesa (ticket più basso). Tutto in
- * transazione per evitare che due chiamate concorrenti scelgano turni diversi.
+ * Chiama il prossimo turno a uno sportello dalla coda **condivisa**. Se c'è già
+ * un turno chiamato a questo sportello lo conclude (`SERVITA`) — "prossimo"
+ * implica che il corrente è servito — poi mette `CHIAMATA` il primo turno in
+ * attesa di oggi (ticket più basso), assegnandogli questo sportello.
+ *
+ * Coda FIFO pura: si chiama sempre il prossimo in lista, a prescindere
+ * dall'orario prenotato (l'orario resta quello "ideale", ma uno sportello
+ * libero può servire chiunque sia in attesa). La coda non è segmentata per
+ * sportello: qualunque sportello libero preleva dalla stessa lista, così le
+ * prenotazioni si distribuiscono in base agli sportelli effettivamente liberi.
+ * Tutto in transazione per evitare che due chiamate concorrenti scelgano lo
+ * stesso turno.
  */
 export async function callNext(
   counterId: string,
@@ -59,22 +67,22 @@ export async function callNext(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const counterFilter = {
-        slot: {
-          startTime: { gte: start, lt: end },
-          openingWindow: { counterId: parsed.data },
-        },
-      };
-
       // Concludi l'eventuale turno chiamato ora a questo sportello.
       await tx.booking.updateMany({
-        where: { ...counterFilter, status: "CHIAMATA" },
+        where: {
+          servedByCounterId: parsed.data,
+          status: "CHIAMATA",
+          slot: { startTime: { gte: start, lt: end } },
+        },
         data: { status: "SERVITA" },
       });
 
-      // Primo turno in attesa (ticket più basso) di questo sportello.
+      // Primo turno in attesa (ticket più basso) della coda condivisa di oggi.
       const next = await tx.booking.findFirst({
-        where: { ...counterFilter, status: { in: ["PRENOTATA", "IN_CODA"] } },
+        where: {
+          status: { in: ["PRENOTATA", "IN_CODA"] },
+          slot: { startTime: { gte: start, lt: end } },
+        },
         orderBy: { ticketNumber: "asc" },
         select: { id: true, ticketNumber: true },
       });
@@ -82,7 +90,11 @@ export async function callNext(
 
       await tx.booking.update({
         where: { id: next.id },
-        data: { status: "CHIAMATA", servedById: user.id },
+        data: {
+          status: "CHIAMATA",
+          servedById: user.id,
+          servedByCounterId: parsed.data,
+        },
       });
 
       return next;

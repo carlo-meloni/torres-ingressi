@@ -83,8 +83,10 @@ export interface BookingListItem {
   slotStart: string;
   /** Fine dello slot prenotato (ISO string). */
   slotEnd: string;
-  counterId: string;
-  counterName: string;
+  /** Sportello che ha servito/chiamato il turno; `null` finché non è chiamato. */
+  counterId: string | null;
+  /** Nome dello sportello che ha servito/chiamato; `null` finché non è chiamato. */
+  counterName: string | null;
 }
 
 /** Sportello selezionabile nel filtro della tabella prenotazioni. */
@@ -130,19 +132,27 @@ export interface QueueBooking {
   status: BookingStatusValue;
 }
 
-/** Coda di un singolo sportello nella dashboard del bigliettaio. */
+/**
+ * Sportello nella dashboard del bigliettaio. La coda d'attesa è **condivisa**
+ * (vedi `CassaQueueData.waiting`): lo sportello mostra solo il turno che sta
+ * chiamando ora, non una propria lista di attesa.
+ */
 export interface CounterQueue {
   counterId: string;
   counterName: string;
   /** Turno chiamato ora a questo sportello (stato `CHIAMATA`); `null` se nessuno. */
   current: QueueBooking | null;
-  /** Turni in attesa (`PRENOTATA`/`IN_CODA`), in ordine di chiamata. */
-  waiting: QueueBooking[];
 }
 
-/** Dati della dashboard bigliettaio: code per sportello + statistica del giorno. */
+/**
+ * Dati della dashboard bigliettaio: sportelli aperti (con il turno in chiamata),
+ * coda d'attesa **condivisa** e statistica del giorno. Qualsiasi sportello
+ * libero preleva il prossimo turno da `waiting`.
+ */
 export interface CassaQueueData {
   counters: CounterQueue[];
+  /** Turni in attesa (`PRENOTATA`/`IN_CODA`), in ordine di chiamata. Condivisa. */
+  waiting: QueueBooking[];
   /** Numero di turni serviti oggi (stato `SERVITA`). */
   servedToday: number;
 }

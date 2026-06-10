@@ -13,7 +13,6 @@ export type ActionResult<T = undefined> =
 /** Dati restituiti dopo una prenotazione andata a buon fine. */
 export interface BookingConfirmation {
   ticketNumber: number;
-  counterName: string;
   /** Giorno dello slot (`YYYY-MM-DD`, fuso del server). */
   date: string;
   /** Orario dello slot (`HH:mm`). */
@@ -31,13 +30,15 @@ function dayBounds(date: Date): { start: Date; end: Date } {
 
 /**
  * Crea una prenotazione pubblica per una **fascia oraria**. Nessuna
- * autenticazione: la parte pubblica è aperta. Tra gli sportelli aperti a
- * quell'ora sceglie quello **meno carico** (bilanciamento), poi assegna un
- * `ticketNumber` progressivo **per giornata**, il tutto in un'unica transazione.
+ * autenticazione: la parte pubblica è aperta. La prenotazione **non** viene
+ * assegnata a uno sportello: lo sportello verrà deciso al momento della
+ * chiamata, quando uno sportello libero preleva il prossimo turno dalla coda
+ * condivisa. Qui si occupa solo un posto della capacità della fascia (lo slot
+ * meno carico, per bilanciare i contatori) e si assegna un `ticketNumber`
+ * progressivo **per giornata**, il tutto in un'unica transazione.
  *
- * Risolvere lo sportello qui (e non al render del calendario) garantisce che le
- * prenotazioni si distribuiscano tra gli sportelli sullo stato corrente del DB,
- * anche con più richieste ravvicinate.
+ * Lo slot scelto serve unicamente da "secchiello" di capacità/orario: non
+ * vincola più chi servirà il tifoso.
  *
  * Nota: la numerazione legge il massimo del giorno e poi inserisce; sotto forte
  * concorrenza due richieste potrebbero collidere. Per la scala della
@@ -66,7 +67,8 @@ export async function createBooking(
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // Tutti gli sportelli (attivi) aperti a quell'istante.
+      // Slot (di sportelli attivi) aperti a quell'istante: secchielli di
+      // capacità per la fascia, non lo sportello che servirà il tifoso.
       const candidates = await tx.bookingSlot.findMany({
         where: {
           startTime,
@@ -76,7 +78,6 @@ export async function createBooking(
           id: true,
           capacity: true,
           _count: { select: { bookings: true } },
-          openingWindow: { select: { counter: { select: { name: true } } } },
         },
       });
 
@@ -124,7 +125,6 @@ export async function createBooking(
         success: true as const,
         data: {
           ticketNumber,
-          counterName: chosen.openingWindow.counter.name,
           date,
           time,
         },
