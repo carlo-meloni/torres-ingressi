@@ -10,26 +10,18 @@ interface BookingCalendarProps {
   week: CalendarDay[];
 }
 
-/** Indice del primo giorno con almeno uno slot prenotabile. */
-function firstOpenIndex(week: CalendarDay[]): number {
-  const i = week.findIndex(
-    (d) => d.status === "aperto" || d.status === "quasi_pieno"
-  );
-  return i === -1 ? 0 : i;
-}
-
 /**
  * Calendario di prenotazione: stepper, striscia dei giorni, selettore degli
  * slot e form. Tiene lo stato della selezione (giorno → slot) e mostra il form
  * solo quando uno slot prenotabile è scelto.
  */
 export default function BookingCalendar({ week }: BookingCalendarProps) {
-  const [dayIndex, setDayIndex] = useState(() => firstOpenIndex(week));
+  const [dayIndex, setDayIndex] = useState<number | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
-  const selectedDay = week[dayIndex];
+  const selectedDay = dayIndex !== null ? week[dayIndex] : null;
   const selectedSlot = useMemo<CalendarSlot | null>(
-    () => selectedDay.slots.find((s) => s.id === selectedSlotId) ?? null,
+    () => selectedDay?.slots.find((s) => s.id === selectedSlotId) ?? null,
     [selectedDay, selectedSlotId]
   );
 
@@ -40,7 +32,7 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Stepper current={selectedSlot ? 2 : 1} />
+      <Stepper current={dayIndex === null ? 0 : selectedSlot ? 2 : 1} />
 
       {/* ── Pannello calendario ──────────────────────────────────────── */}
       <div className="rounded-3xl border border-brand-surface-muted bg-white p-5 shadow-sm shadow-brand-primary/5 sm:p-7">
@@ -83,24 +75,28 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
           })}
         </div>
 
-        <hr className="my-6 border-brand-surface-muted" />
+        {selectedDay && (
+          <>
+            <hr className="my-6 border-brand-surface-muted" />
 
-        {/* Slot della giornata */}
-        <section className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-brand-primary sm:text-lg">
-            Orari di {selectedDay.weekday} {selectedDay.dayNumber}{" "}
-            {selectedDay.month}
-          </h2>
-          <SlotPicker
-            day={selectedDay}
-            selectedSlotId={selectedSlotId}
-            onSelect={(slot) => setSelectedSlotId(slot.id)}
-          />
-        </section>
+            {/* Slot della giornata */}
+            <section className="flex flex-col gap-4">
+              <h2 className="text-base font-semibold text-brand-primary sm:text-lg">
+                Orari di {selectedDay.weekday} {selectedDay.dayNumber}{" "}
+                {selectedDay.month}
+              </h2>
+              <SlotPicker
+                day={selectedDay}
+                selectedSlotId={selectedSlotId}
+                onSelect={(slot) => setSelectedSlotId(slot.id)}
+              />
+            </section>
+          </>
+        )}
       </div>
 
       {/* ── Form (solo a slot selezionato) ───────────────────────────── */}
-      {selectedSlot && (
+      {selectedSlot && selectedDay && (
         <section className="reveal rounded-3xl border border-brand-surface-muted bg-white p-6 shadow-sm shadow-brand-primary/5 sm:p-7">
           <h2 className="mb-5 text-base font-semibold text-brand-primary sm:text-lg">
             I tuoi dati
