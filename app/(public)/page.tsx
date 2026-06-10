@@ -25,7 +25,7 @@ export default function LandingPage() {
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-linear-to-br from-brand-primary-dark via-brand-primary to-brand-primary-light text-white">
+      <section className="relative overflow-hidden bg-linear-to-br from-brand-accent via-brand-primary-dark to-brand-primary-dark text-white">
         {/* Stemma in filigrana */}
         <Image
           src={logo}
@@ -43,14 +43,22 @@ export default function LandingPage() {
         />
 
         <div className="relative mx-auto flex w-full max-w-5xl flex-col items-start gap-7 px-5 py-24 sm:py-32">
-          <span className="reveal inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium uppercase tracking-[0.12em] text-white/90 backdrop-blur-sm">
-            <span className="size-1.5 rounded-full bg-brand-accent" />
-            Torres Sassari
-          </span>
+          
 
-          <h1 className="reveal reveal-1 max-w-3xl text-balance text-5xl font-bold leading-[1.05] sm:text-6xl">
-            Prenota il tuo turno alla biglietteria,{" "}
-            <span className="text-brand-accent">senza code</span>
+          <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
+            Prelazione Abbonamenti 2026-2027 {" "}
+          </h1>
+
+          <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
+            <span className="text-brand-accent">Viale Umberto 26 - Sassari (Hubinsula)</span>
+          </h1>
+
+           <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
+            Dal 15 Luglio
+          </h1>
+
+          <h1 className="reveal reveal-1 max-w-8xl text-balance text-5xl  leading-[1.05] sm:text-4xl">
+            <span className="text-brand-accent">17:00 - 20:00 {" "}</span>
           </h1>
 
           <p className="reveal reveal-2 max-w-xl text-lg leading-relaxed text-white/75">
@@ -65,18 +73,18 @@ export default function LandingPage() {
             >
               Prenota ora
             </Link>
-            <Link
+            {/* <Link
               href="/#info"
               className="rounded-full border border-white/20 px-7 py-3.5 font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/5"
             >
               Come funziona
-            </Link>
+            </Link> */}
           </div>
         </div>
       </section>
 
       {/* ── Come funziona ────────────────────────────────────────────── */}
-      <section id="info" className="mx-auto w-full max-w-5xl px-5 py-20 sm:py-24">
+      {/* <section id="info" className="mx-auto w-full max-w-5xl px-5 py-20 sm:py-24">
         <div className="flex flex-col gap-3">
           <span className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-accent">
             Come funziona
@@ -106,10 +114,10 @@ export default function LandingPage() {
             </li>
           ))}
         </ol>
-      </section>
+      </section> */}
 
       {/* ── CTA finale ───────────────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-5xl px-5 pb-24">
+      {/* <section className="mx-auto w-full max-w-5xl px-5 pb-24">
         <div className="relative flex flex-col items-center gap-5 overflow-hidden rounded-3xl bg-linear-to-br from-brand-primary to-brand-primary-light px-6 py-16 text-center text-white">
           <Image
             src={logo}
@@ -132,7 +140,7 @@ export default function LandingPage() {
             Vai al calendario
           </Link>
         </div>
-      </section>
+      </section> */}
     </>
   );
 }

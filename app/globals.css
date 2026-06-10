@@ -10,14 +10,14 @@
   --card-foreground: var(--foreground);
   --popover: #ffffff;
   --popover-foreground: var(--foreground);
-  --primary: #16264f; /* brand navy */
+  --primary: #16264ff0; /* brand navy */
   --primary-foreground: #ffffff;
   --secondary: #f4f5f8; /* brand surface */
-  --secondary-foreground: #16264f;
+  --secondary-foreground: #16264ff0;
   --muted: #f4f5f8;
   --muted-foreground: #5b6478; /* brand muted */
   --accent: #f4f5f8; /* superfici di hover */
-  --accent-foreground: #16264f;
+  --accent-foreground: #16264ff0;
   --destructive: #ef4444; /* status-full */
   --border: #e6e8ef; /* brand-surface-muted */
   --input: #e6e8ef;
@@ -52,7 +52,7 @@
 
   /* ── Brand palette — vedi lib/colors.ts ─────────────────────────── */
   /* Primario: blu navy Torres */
-  --color-brand-primary: #16264f;
+  --color-brand-primary: #16264ff0;
   --color-brand-primary-dark: #0d1733;
   --color-brand-primary-light: #24407f;
   /* Accento: rosso Torres */

@@ -7,7 +7,7 @@
  */
 export const COLORS = {
   /** Blu navy — colore primario */
-  primary: "#16264f",
+  primary: "##16264ff0",
   /** Navy più scuro — gradienti / hover su superfici scure */
   primaryDark: "#0d1733",
   /** Navy più chiaro — bordi e accenti su superfici scure */
