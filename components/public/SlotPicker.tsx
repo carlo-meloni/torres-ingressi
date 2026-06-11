@@ -56,7 +56,7 @@ export default function SlotPicker({
               onClick={() => onSelect(slot)}
               aria-pressed={isSelected}
               className={[
-                "group relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3.5 text-sm font-semibold tabular-nums transition-all duration-200 ease-out-soft",
+                "group relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3.5 text-sm font-semibold tabular-nums transition-all duration-200 ease-out-soft enabled:active:scale-[0.97]",
                 isSelected
                   ? "border-transparent bg-linear-to-b from-brand-accent to-brand-accent-hover text-white shadow-lg shadow-brand-accent/30 ring-1 ring-brand-accent/30"
                   : meta.selectable

@@ -7,7 +7,7 @@
  */
 export const COLORS = {
   /** Blu navy — colore primario */
-  primary: "##16264ff0",
+  primary: "#16264f",
   /** Navy più scuro — gradienti / hover su superfici scure */
   primaryDark: "#0d1733",
   /** Navy più chiaro — bordi e accenti su superfici scure */
@@ -18,6 +18,8 @@ export const COLORS = {
   accentHover: "#9c2810",
   /** Oro/bronzo dello stemma — hairline e accenti caldi su superfici scure */
   gold: "#c8a96a",
+  /** Sfondo header pubblico (usato translucido al 94%) */
+  header: "#0f1322",
   /** Grigio chiarissimo — superfici / sfondo */
   surface: "#f4f5f8",
   /** Grigio chiaro — superfici secondarie / bordi */

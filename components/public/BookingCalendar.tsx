@@ -25,6 +25,11 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
     [selectedDay, selectedSlotId]
   );
 
+  const currentStep = selectedSlot ? 2 : selectedDay ? 1 : 0;
+  const openSlots =
+    selectedDay?.slots.filter((s) => SLOT_STATUS_META[s.status].selectable)
+      .length ?? 0;
+
   function selectDay(index: number) {
     setDayIndex(index);
     setSelectedSlotId(null);
@@ -32,12 +37,15 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Stepper current={dayIndex === null ? 0 : selectedSlot ? 2 : 1} />
+      {/* ── Avanzamento ──────────────────────────────────────────────── */}
+      <nav aria-label="Avanzamento prenotazione" className="px-1">
+        <Stepper current={currentStep} />
+      </nav>
 
       {/* ── Pannello calendario ──────────────────────────────────────── */}
       <div className="rounded-3xl border border-brand-surface-muted bg-white p-5 shadow-sm shadow-brand-primary/5 sm:p-7">
         {/* Striscia giorni */}
-        <div className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-2">
+        <div className="-mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-2">
           {week.map((day, i) => {
             const meta = SLOT_STATUS_META[day.status];
             const isActive = i === dayIndex;
@@ -48,7 +56,7 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
                 onClick={() => selectDay(i)}
                 aria-pressed={isActive}
                 className={[
-                  "group flex min-w-[4.75rem] flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 transition-all duration-200 ease-out-soft",
+                  "group flex min-w-[4.75rem] snap-start flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 transition-all duration-200 ease-out-soft active:scale-[0.97]",
                   isActive
                     ? "border-transparent bg-linear-to-b from-brand-primary to-brand-primary-dark text-white shadow-lg shadow-brand-primary/25 ring-1 ring-brand-gold/40"
                     : "border-brand-surface-muted bg-white text-brand-primary hover:-translate-y-0.5 hover:border-brand-primary/30 hover:shadow-md hover:shadow-brand-primary/10",
@@ -65,26 +73,39 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
                   {day.dayNumber}
                 </span>
                 <span
-                  className={`mt-0.5 size-2 rounded-full ${meta.dot} ${
+                  className={`mt-0.5 size-2 rounded-full transition-shadow duration-200 ${meta.dot} ${
                     isActive ? "ring-2 ring-white/30" : ""
                   }`}
                   aria-hidden
                 />
+                <span className="sr-only">{meta.label}</span>
               </button>
             );
           })}
         </div>
 
-        {selectedDay && (
+        {selectedDay ? (
           <>
             <hr className="my-6 border-brand-surface-muted" />
 
-            {/* Slot della giornata */}
-            <section className="flex flex-col gap-4">
-              <h2 className="text-base font-semibold text-brand-primary sm:text-lg">
-                Orari di {selectedDay.weekday} {selectedDay.dayNumber}{" "}
-                {selectedDay.month}
-              </h2>
+            {/* Slot della giornata: la chiave fa ripartire l'animazione di
+                ingresso a ogni cambio giorno. */}
+            <section
+              key={selectedDay.date}
+              className="reveal flex flex-col gap-4"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-base font-semibold text-brand-primary sm:text-lg">
+                  Orari di {selectedDay.weekday} {selectedDay.dayNumber}{" "}
+                  {selectedDay.month}
+                </h2>
+                {openSlots > 0 && (
+                  <span className="rounded-full bg-brand-surface px-2.5 py-1 text-xs font-medium tabular-nums text-brand-muted">
+                    {openSlots}{" "}
+                    {openSlots === 1 ? "fascia disponibile" : "fasce disponibili"}
+                  </span>
+                )}
+              </div>
               <SlotPicker
                 day={selectedDay}
                 selectedSlotId={selectedSlotId}
@@ -92,6 +113,10 @@ export default function BookingCalendar({ week }: BookingCalendarProps) {
               />
             </section>
           </>
+        ) : (
+          <p className="mt-4 rounded-2xl border border-dashed border-brand-surface-muted bg-brand-surface/60 px-5 py-6 text-center text-sm text-brand-muted">
+            Seleziona un giorno per vedere gli orari disponibili.
+          </p>
         )}
       </div>
 
@@ -123,13 +148,14 @@ function Stepper({ current }: { current: number }) {
         return (
           <li
             key={label}
+            aria-current={active ? "step" : undefined}
             className="flex items-center gap-2 last:flex-none sm:flex-1"
           >
             <span
               className={[
-                "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors duration-300 ease-out-soft",
+                "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ease-out-soft",
                 active
-                  ? "bg-brand-accent text-white shadow-sm shadow-brand-accent/30"
+                  ? "scale-110 bg-brand-accent text-white shadow-sm shadow-brand-accent/30"
                   : done
                     ? "bg-brand-primary text-white"
                     : "bg-brand-surface-muted text-brand-muted",
@@ -150,7 +176,9 @@ function Stepper({ current }: { current: number }) {
             </span>
             {i < STEPS.length - 1 && (
               <span
-                className="mx-1 hidden h-px flex-1 bg-brand-surface-muted sm:block"
+                className={`mx-1 hidden h-px flex-1 transition-colors duration-300 sm:block ${
+                  done ? "bg-brand-primary/40" : "bg-brand-surface-muted"
+                }`}
                 aria-hidden
               />
             )}

@@ -32,7 +32,7 @@ export default async function LandingPage() {
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="min-h-[calc(100vh-12rem)] relative overflow-hidden bg-linear-to-br from-brand-accent via-brand-primary-dark to-brand-primary-dark text-white">
+      <section className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-linear-to-b from-brand-primary-dark via-brand-primary to-brand-primary-dark text-white">
         {/* Stemma in filigrana */}
         <Image
           src={logo}
@@ -43,37 +43,61 @@ export default async function LandingPage() {
           priority
           className="pointer-events-none absolute -right-10 top-1/2 hidden w-[clamp(16rem,32vw,30rem)] -translate-y-1/2 opacity-[0.06] md:block"
         />
-        {/* Bagliore d'accento */}
+        {/* Bagliori: accento a sinistra, navy chiaro a destra */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-24 top-0 h-96 w-96 rounded-full bg-brand-accent/20 blur-3xl"
+          className="pointer-events-none absolute -left-24 -top-24 h-112 w-md rounded-full bg-brand-accent/20 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 right-0 h-96 w-96 rounded-full bg-brand-primary-light/30 blur-3xl"
         />
 
-        <div className="relative mx-auto flex w-full max-w-5xl flex-col items-start gap-7 px-5 py-24 sm:py-32">
+        <div className="relative mx-auto flex w-full max-w-5xl flex-col items-start gap-8 px-6 py-24 sm:py-32">
+          {/* <span className="reveal reveal-1 inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+            <span
+              aria-hidden
+              className="size-1.5 rounded-full bg-brand-gold"
+            />
+            Torres Sassari
+          </span> */}
+
           {/* Titolo multilinea: gli a capo del testo salvato diventano righe. */}
-          <h1 className="reveal reveal-1 max-w-8xl whitespace-pre-line text-balance text-5xl leading-[1.15] sm:text-4xl">
+          <h1 className="reveal reveal-1 max-w-3xl whitespace-pre-line text-balance font-display text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
             {hero.title}
           </h1>
 
-          <p className="reveal reveal-2 max-w-xl whitespace-pre-line text-lg leading-relaxed text-white/75">
+          <p className="reveal reveal-2 max-w-xl whitespace-pre-line text-lg leading-relaxed text-white/70">
             {hero.subtitle}
           </p>
 
-          <div className="reveal reveal-3 flex flex-wrap items-center gap-3.5 pt-1">
+          <div className="reveal reveal-3 flex flex-wrap items-center gap-4 pt-1">
             <Link
               href="/prenota"
-              className="rounded-full bg-brand-accent px-7 py-3.5 font-semibold text-white shadow-lg shadow-brand-accent/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-accent-hover hover:shadow-xl hover:shadow-brand-accent/30"
+              className="group rounded-full bg-brand-accent px-7 py-3.5 font-semibold text-white shadow-lg shadow-brand-accent/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-accent-hover hover:shadow-xl hover:shadow-brand-accent/30 focus-visible:outline-white active:translate-y-0"
             >
-              Prenota ora
+              Prenota ora{" "}
+              <span
+                aria-hidden
+                className="inline-block transition-transform duration-200 group-hover:translate-x-1"
+              >
+                →
+              </span>
             </Link>
-            {/* <Link
-              href="/#info"
-              className="rounded-full border border-white/20 px-7 py-3.5 font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/5"
+            <Link
+              href="/display"
+              className="rounded-full border border-white/20 px-7 py-3.5 font-semibold text-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/5 hover:text-white focus-visible:outline-white active:translate-y-0"
             >
-              Come funziona
-            </Link> */}
+              Coda in tempo reale
+            </Link>
           </div>
         </div>
+
+        {/* Hairline oro sul bordo inferiore */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-brand-gold/60 to-transparent"
+        />
       </section>
 
       {/* ── Come funziona ────────────────────────────────────────────── */}

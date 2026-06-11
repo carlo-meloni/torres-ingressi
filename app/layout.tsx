@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { Lato } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
 
+// Coppia tipografica: Inter (testo) + Archivo (titoli, look sportivo).
+// Entrambi variable font — nessun peso da dichiarare.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
-const lato = Lato(
-  {
-    weight: ["400", "700"],
-    subsets: ["latin"],
-    variable: "--font-lato",
-  },
-
-)
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+});
 
 export const metadata: Metadata = {
   title: "Torres Biglietteria",
@@ -26,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="it"
-      className={`${lato.variable} h-full antialiased`}
+      className={`${inter.variable} ${archivo.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
