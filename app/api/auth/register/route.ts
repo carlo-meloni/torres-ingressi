@@ -3,6 +3,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitMessage,
+  retryAfterSeconds,
+} from "@/lib/rate-limit";
 
 // Registration payload. `confirmPassword` must match `password`.
 const registerSchema = z
@@ -18,6 +24,19 @@ const registerSchema = z
   });
 
 export async function POST(request: Request) {
+  // Limita la creazione massiva di account per IP.
+  const ip = getClientIp(request.headers);
+  const rl = await checkRateLimit("register", ip);
+  if (!rl.success) {
+    return NextResponse.json(
+      { success: false, error: rateLimitMessage(rl.reset) },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) },
+      },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

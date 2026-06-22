@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { prisma } from "@/lib/prisma";
 import { bookingFormSchema, type BookingFormValues } from "@/lib/schemas/booking";
+import { checkRateLimit, getClientIp, rateLimitMessage } from "@/lib/rate-limit";
 
 /** Esito uniforme delle Server Actions (vedi coding-standards: `{ success, data, error }`). */
 export type ActionResult<T = undefined> =
@@ -56,6 +58,16 @@ export async function createBooking(
     };
   }
   const { slotStart, name, email, phone } = parsed.data;
+
+  // Anti-spam: la prenotazione è pubblica e senza autenticazione. Una sola
+  // prenotazione ogni 10 minuti per IP, a prescindere dall'email, per fermare
+  // lo scripting di turni. Fail-open se Upstash non è attivo.
+  const ip = getClientIp(await headers());
+  const rl = await checkRateLimit("booking", ip);
+  if (!rl.success) {
+    return { success: false, error: rateLimitMessage(rl.reset) };
+  }
+
   const startTime = new Date(slotStart);
 
   if (startTime.getTime() <= Date.now()) {

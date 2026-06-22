@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS=--no-network-family-autoselection next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -25,6 +25,8 @@
     "@radix-ui/react-popover": "^1.1.16",
     "@radix-ui/react-select": "^2.3.0",
     "@radix-ui/react-slot": "^1.2.5",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
