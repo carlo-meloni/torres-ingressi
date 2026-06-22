@@ -1,6 +1,18 @@
 import { z } from "zod";
 
 /**
+ * Anticipo minimo per prenotare: una fascia è prenotabile solo se inizia almeno
+ * 4 ore dopo l'istante corrente (es. alle 15:00 si può prenotare dalle 19:00 in
+ * poi). Condiviso tra il calcolo del calendario e la Server Action di creazione.
+ */
+export const BOOKING_LEAD_TIME_MS = 4 * 60 * 60 * 1000;
+
+/** Istante minimo prenotabile a partire da `now` (default: adesso). */
+export function earliestBookableTime(now: Date = new Date()): Date {
+  return new Date(now.getTime() + BOOKING_LEAD_TIME_MS);
+}
+
+/**
  * Schema condiviso per la creazione di una prenotazione pubblica.
  *
  * Usato sia dal form (`/prenota`) sia dalla Server Action `createBooking`, così

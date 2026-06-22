@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { prisma } from "@/lib/prisma";
-import { bookingFormSchema, type BookingFormValues } from "@/lib/schemas/booking";
+import {
+  bookingFormSchema,
+  earliestBookableTime,
+  type BookingFormValues,
+} from "@/lib/schemas/booking";
 import { checkRateLimit, getClientIp, rateLimitMessage } from "@/lib/rate-limit";
 
 /** Esito uniforme delle Server Actions (vedi coding-standards: `{ success, data, error }`). */
@@ -70,10 +74,11 @@ export async function createBooking(
 
   const startTime = new Date(slotStart);
 
-  if (startTime.getTime() <= Date.now()) {
+  // Serve almeno 4 ore di anticipo (es. alle 15:00 si prenota dalle 19:00).
+  if (startTime.getTime() < earliestBookableTime().getTime()) {
     return {
       success: false,
-      error: "Questo orario è già passato: scegline un altro.",
+      error: "Puoi prenotare solo con almeno 4 ore di anticipo: scegli un altro orario.",
     };
   }
 

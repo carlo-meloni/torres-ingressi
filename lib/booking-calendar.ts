@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { earliestBookableTime } from "@/lib/schemas/booking";
 import type { CalendarDay, CalendarSlot, SlotStatus } from "@/types/booking";
 
 /**
@@ -67,7 +68,8 @@ function timeLabel(date: Date): string {
 export async function getBookingCalendar(): Promise<CalendarDay[]> {
   const slots = await prisma.bookingSlot.findMany({
     where: {
-      startTime: { gte: new Date() },
+      // Solo fasce con almeno 4 ore di anticipo (vedi `earliestBookableTime`).
+      startTime: { gte: earliestBookableTime() },
       openingWindow: { counter: { isActive: true } },
     },
     orderBy: { startTime: "asc" },
