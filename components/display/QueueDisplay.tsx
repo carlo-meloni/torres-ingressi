@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { QueueSnapshot } from "@/types/booking";
 import { formatTicket } from "@/lib/format";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 import { useQueueChannel } from "@/lib/use-queue-channel";
 import { useCallChime } from "@/lib/use-call-chime";
 import logo from "@/public/logo.webp";
@@ -226,6 +227,7 @@ function Clock() {
           ? new Intl.DateTimeFormat("it-IT", {
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: APP_TIME_ZONE,
             }).format(now)
           : "--:--"}
       </span>
@@ -235,6 +237,7 @@ function Clock() {
               weekday: "long",
               day: "numeric",
               month: "long",
+              timeZone: APP_TIME_ZONE,
             }).format(now)
           : ""}
       </span>

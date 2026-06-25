@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import { formatTime } from "@/lib/format";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 // Pagina con dati personali, una per prenotazione: fuori dall'indice.
 export const metadata: Metadata = {
@@ -22,17 +24,13 @@ function param(
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
-/** Due cifre con zero iniziale. */
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-/** Formatta una data in italiano esteso (fuso del server). */
+/** Formatta una data in italiano esteso, ancorata al fuso italiano. */
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("it-IT", {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone: APP_TIME_ZONE,
   }).format(date);
 }
 
@@ -82,7 +80,7 @@ export default async function ConfermaPage({
   const { ticketNumber, name, email } = booking;
   const start = booking.slot.startTime;
   const dayLabel = formatDate(start);
-  const time = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+  const time = formatTime(start);
 
   return (
     <div className="mx-auto w-full max-w-xl px-5 py-12 sm:py-16">

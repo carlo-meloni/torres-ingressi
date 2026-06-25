@@ -3,17 +3,23 @@
  *
  * Le date si mostrano **sempre** come `dd/mm/yyyy`; gli orari come `HH:mm`
  * (24h). Centralizzati qui così che la convenzione abbia un'unica sorgente.
+ *
+ * Il fuso è fissato a `Europe/Rome` ([[APP_TIME_ZONE]]): un istante è sempre
+ * reso in ora italiana, a prescindere dal fuso del dispositivo di chi guarda.
  */
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const DATE_FMT = new Intl.DateTimeFormat("it-IT", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
+  timeZone: APP_TIME_ZONE,
 });
 
 const TIME_FMT = new Intl.DateTimeFormat("it-IT", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: APP_TIME_ZONE,
 });
 
 /** Formatta una data come `dd/mm/yyyy` (es. `10/06/2026`). */

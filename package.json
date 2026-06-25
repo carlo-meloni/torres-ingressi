@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS=--no-network-family-autoselection next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "TZ=Europe/Rome NODE_OPTIONS=--no-network-family-autoselection next dev",
+    "build": "TZ=Europe/Rome next build",
+    "start": "TZ=Europe/Rome next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
@@ -13,6 +13,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
     "db:seed": "tsx prisma/seed.ts",
+    "db:fix-timezone": "TZ=Europe/Rome tsx prisma/scripts/fix-window-timezone.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
