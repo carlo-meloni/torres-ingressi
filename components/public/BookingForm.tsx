@@ -59,16 +59,10 @@ export default function BookingForm({ day, slot }: BookingFormProps) {
       return;
     }
 
-    const params = new URLSearchParams({
-      ticket: String(result.data.ticketNumber),
-      name,
-      date: result.data.date,
-      time: result.data.time,
-    });
-    if (email) params.set("email", email);
-    if (phone) params.set("phone", phone);
-
-    router.push(`/prenota/conferma?${params.toString()}`);
+    // Solo l'id della prenotazione nella URL: i dettagli (nome, email, turno)
+    // vengono riletti dal DB lato server, così nessun dato personale finisce
+    // nella URL, nella cronologia o nei referer.
+    router.push(`/prenota/conferma?b=${result.data.id}`);
   }
 
   return (

@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { prisma } from "@/lib/prisma";
+
+// Pagina con dati personali, una per prenotazione: fuori dall'indice.
 export const metadata: Metadata = {
-  title: "Prenotazione confermata — Torres Biglietteria",
+  title: "Prenotazione confermata",
+  robots: { index: false, follow: false },
 };
 
 interface ConfermaPageProps {
@@ -18,11 +22,13 @@ function param(
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
-/** Formatta una data ISO "YYYY-MM-DD" in italiano esteso. */
-function formatDate(iso: string): string {
-  if (!iso) return "";
-  const date = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return iso;
+/** Due cifre con zero iniziale. */
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** Formatta una data in italiano esteso (fuso del server). */
+function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("it-IT", {
     weekday: "long",
     day: "numeric",
@@ -31,22 +37,30 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Conferma della prenotazione con il numero di turno bene in vista. Legge i
- * dettagli dai search params (popolati dal form). Con i dati reali questi
- * arriveranno dalla prenotazione creata e dall'email di conferma.
+ * Conferma della prenotazione con il numero di turno bene in vista. Riceve solo
+ * l'id della prenotazione (`?b=`) e ne rilegge i dettagli dal DB: nessun dato
+ * personale transita nella URL.
  */
 export default async function ConfermaPage({
   searchParams,
 }: ConfermaPageProps) {
   const sp = await searchParams;
-  const ticket = param(sp, "ticket");
-  const name = param(sp, "name");
-  const date = param(sp, "date");
-  const time = param(sp, "time");
-  const email = param(sp, "email");
+  const id = param(sp, "b");
 
-  // Senza un numero di turno non c'è nulla da confermare.
-  if (!ticket) {
+  const booking = id
+    ? await prisma.booking.findUnique({
+        where: { id },
+        select: {
+          ticketNumber: true,
+          name: true,
+          email: true,
+          slot: { select: { startTime: true } },
+        },
+      })
+    : null;
+
+  // Senza una prenotazione valida non c'è nulla da confermare.
+  if (!booking) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 px-5 py-24 text-center">
         <h1 className="text-2xl font-bold text-brand-primary">
@@ -64,6 +78,11 @@ export default async function ConfermaPage({
       </div>
     );
   }
+
+  const { ticketNumber, name, email } = booking;
+  const start = booking.slot.startTime;
+  const dayLabel = formatDate(start);
+  const time = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
 
   return (
     <div className="mx-auto w-full max-w-xl px-5 py-12 sm:py-16">
@@ -100,13 +119,13 @@ export default async function ConfermaPage({
             Il tuo turno
           </span>
           <p className="mt-2 text-7xl font-bold tabular-nums tracking-tight sm:text-8xl">
-            {ticket.padStart(3, "0")}
+            {String(ticketNumber).padStart(3, "0")}
           </p>
         </div>
 
         {/* Dettagli */}
         <dl className="w-full divide-y divide-brand-surface-muted rounded-2xl border border-brand-surface-muted bg-white text-left text-sm">
-          <Detail label="Giorno" value={formatDate(date)} />
+          <Detail label="Giorno" value={dayLabel} />
           <Detail label="Orario" value={time} />
           {email && <Detail label="Conferma inviata a" value={email} />}
         </dl>

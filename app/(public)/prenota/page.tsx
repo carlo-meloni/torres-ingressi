@@ -3,7 +3,7 @@ import BookingCalendar from "@/components/public/BookingCalendar";
 import { getBookingCalendar } from "@/lib/booking-calendar";
 
 export const metadata: Metadata = {
-  title: "Prenota il tuo turno — Torres Biglietteria",
+  title: "Prenota il tuo turno",
   description:
     "Scegli giorno e orario dal calendario e prenota il tuo turno alla biglietteria della Torres Sassari.",
 };

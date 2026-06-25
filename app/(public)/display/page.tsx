@@ -3,7 +3,7 @@ import QueueDisplay from "@/components/display/QueueDisplay";
 import { getQueue } from "@/lib/queue";
 
 export const metadata: Metadata = {
-  title: "Schermo coda — Torres Biglietteria",
+  title: "Schermo coda",
   description: "Schermo pubblico della coda della biglietteria Torres Sassari.",
 };
 

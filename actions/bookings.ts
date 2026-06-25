@@ -18,6 +18,9 @@ export type ActionResult<T = undefined> =
 
 /** Dati restituiti dopo una prenotazione andata a buon fine. */
 export interface BookingConfirmation {
+  /** Id della prenotazione: usato per recuperarne i dettagli nella pagina di
+   *  conferma senza esporre dati personali nella URL. */
+  id: string;
   ticketNumber: number;
   /** Giorno dello slot (`YYYY-MM-DD`, fuso del server). */
   date: string;
@@ -124,8 +127,9 @@ export async function createBooking(
       });
       const ticketNumber = (last?.ticketNumber ?? 0) + 1;
 
-      await tx.booking.create({
+      const created = await tx.booking.create({
         data: { slotId: chosen.id, name, email, phone, ticketNumber },
+        select: { id: true },
       });
 
       const time = `${String(startTime.getHours()).padStart(2, "0")}:${String(
@@ -141,6 +145,7 @@ export async function createBooking(
       return {
         success: true as const,
         data: {
+          id: created.id,
           ticketNumber,
           date,
           time,
