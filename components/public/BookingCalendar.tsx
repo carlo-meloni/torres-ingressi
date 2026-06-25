@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
   BookingFormData,
@@ -171,6 +171,15 @@ function StepOrario({
     selectedDay?.slots.filter((s) => SLOT_STATUS_META[s.status].selectable)
       .length ?? 0;
 
+  // Quando l'utente sceglie un giorno, porta dolcemente in vista la sezione
+  // degli orari: su mobile la striscia dei giorni può occupare tutto lo schermo
+  // e gli slot finirebbero altrimenti sotto la piega.
+  const slotsRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (dayIndex === null) return;
+    slotsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [dayIndex]);
+
   return (
     <div className="flex flex-col">
       {/* Striscia giorni */}
@@ -217,6 +226,7 @@ function StepOrario({
         <>
           <hr className="my-6 border-brand-surface-muted" />
           <section
+            ref={slotsRef}
             key={selectedDay.date}
             className="reveal flex flex-col gap-4 scroll-mt-6"
           >
